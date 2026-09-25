@@ -10,7 +10,7 @@ As **regras de domínio** definem as condições e restrições próprias das en
 
 | Nº | Tipo | Nome da regra de negócio | Descrição da regra de negócio |
 |---|---|---|---|
-| RN001 | Domínio | Vínculo da Equipe | Toda equipe cadastrada deve estar vinculada a um treinador responsável. |
+| RN001 | Domínio | Vínculo da Equipe | Toda equipe ativa deve estar vinculada a um treinador responsável. Após o cadastro inicial, a equipe deve permanecer com status pendente até que a conta do treinador seja criada e vinculada. |
 | RN002 | Domínio | Participantes da Partida | Toda partida deve estar associada a uma equipe, e seus participantes devem corresponder a jogadores vinculados à equipe. |
 | RN003 | Domínio | Limite de Participantes | Uma partida poderá possuir até cinco jogadores participantes da equipe, não sendo permitida a duplicação de um mesmo jogador entre seus participantes. |
 | RN004 | Domínio | Unicidade da Sessão | Cada partida poderá possuir, no máximo, uma sessão de revisão associada. |
@@ -30,7 +30,7 @@ As **regras de domínio** definem as condições e restrições próprias das en
 
 | Nº | Tipo | Nome da regra de negócio | Descrição da regra de negócio |
 |---|---|---|---|
-| RN016 | Aplicação | Gerenciamento de Usuários | A aplicação deve restringir o cadastro, a consulta, a alteração e a desativação das contas dos treinadores aos usuários com perfil de administrador. |
+| RN016 | Aplicação | Gestão Administrativa de Equipes e Treinadores | A aplicação deve restringir ao perfil de administrador o cadastro e a manutenção das equipes, bem como o cadastro, a consulta, a alteração e a desativação das contas dos treinadores vinculados a elas. O administrador não deve possuir acesso aos painéis, às estatísticas, às partidas ou às revisões das equipes. |
 | RN017 | Aplicação | Controle de Acesso | A aplicação deve permitir o acesso às funcionalidades restritas somente a usuários autenticados, com contas ativas e permissões compatíveis com seu perfil. |
 | RN018 | Aplicação | Restrição de Acesso do Treinador | A aplicação deve restringir as operações do treinador às equipes sob sua responsabilidade e aos respectivos jogadores, partidas e registros de revisão. |
 | RN019 | Aplicação | Associação dos Participantes | Antes de associar gravações a uma partida, a aplicação deve exigir a identificação dos jogadores participantes aos quais os arquivos serão vinculados. |

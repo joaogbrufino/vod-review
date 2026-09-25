@@ -11,8 +11,8 @@ As descrições seguem o padrão adotado no DERS, com o acréscimo das referênc
 | Código | Nome do requisito funcional | Descrição | Dependências | Conflitos |
 |:---:|---|---|---|---|
 | **RF001** | **Autenticar Usuário** | Permitir que usuários cadastrados acessem a plataforma mediante autenticação por credenciais.<br>**Regras de negócio aplicáveis:** RN017. | Nenhuma. | Nenhum identificado. |
-| **RF002** | **Manter Usuários** | Permitir ao administrador cadastrar, consultar, alterar e desativar as contas dos treinadores que possuem acesso à plataforma.<br>**Regras de negócio aplicáveis:** RN016, RN017. | RF001. | Nenhum identificado. |
-| **RF003** | **Manter Equipe** | Permitir cadastrar, consultar, alterar e excluir as informações da equipe vinculada ao treinador.<br>**Regras de negócio aplicáveis:** RN001, RN017, RN018. | RF001. | Nenhum identificado. |
+| **RF002** | **Manter Usuários** | Permitir ao administrador cadastrar, consultar, alterar e desativar exclusivamente as contas dos treinadores que possuem acesso à plataforma, identificando a equipe à qual cada treinador está vinculado.<br>**Regras de negócio aplicáveis:** RN001, RN016, RN017. | RF001, RF003. | Nenhum identificado. |
+| **RF003** | **Manter Equipe** | Permitir ao administrador cadastrar, consultar, alterar e excluir as informações das equipes e vincular um treinador responsável a cada equipe. O cadastro deve permanecer pendente até a criação e vinculação da conta do treinador. O treinador poderá consultar e manter somente a equipe sob sua responsabilidade, conforme suas permissões.<br>**Regras de negócio aplicáveis:** RN001, RN016, RN017, RN018. | RF001. | Nenhum identificado. |
 | **RF004** | **Manter Jogadores** | Permitir cadastrar, consultar, alterar e excluir os jogadores vinculados à equipe.<br>**Regras de negócio aplicáveis:** RN002, RN003, RN017, RN018. | RF003. | Nenhum identificado. |
 | **RF005** | **Consultar Desempenho dos Jogadores** | Permitir consultar o desempenho dos jogadores com base nas estatísticas informadas nos scoreboards das partidas registradas.<br>**Regras de negócio aplicáveis:** RN010, RN011, RN012, RN014, RN017, RN018, RN029, RN034. | RF004, RF006. | Nenhum identificado. |
 | **RF006** | **Manter Partidas** | Permitir cadastrar, consultar, alterar e excluir partidas da equipe, incluindo seus participantes, placar final e estatísticas individuais registradas no scoreboard.<br>**Regras de negócio aplicáveis:** RN002, RN003, RN010, RN011, RN012, RN014, RN017, RN018, RN027, RN029, RN033, RN034. | RF003, RF004. | Nenhum identificado. |
@@ -28,6 +28,7 @@ As descrições seguem o padrão adotado no DERS, com o acréscimo das referênc
 
 - **RN017 (Controle de Acesso)** é transversal às funcionalidades restritas; por isso, aparece nos requisitos acessíveis por usuários autenticados.
 - **RN018 (Restrição de Acesso do Treinador)** aparece nos requisitos que manipulam ou consultam dados de equipes sob responsabilidade do treinador.
+- O perfil **Administrador** está restrito à gestão cadastral de equipes e de contas de treinadores. Os painéis, estatísticas, partidas e revisões das equipes são acessíveis somente pelos respectivos treinadores.
 - **RF006** agrupa o cadastro/manutenção das partidas e o registro/correção do scoreboard; sua obrigatoriedade na finalização é verificada por **RF012**.
 - **RF012** reúne o ciclo da sessão e a consulta ao histórico, sem criar requisito separado para essas consultas.
 - As **34 regras de negócio** existentes (RN001–RN034) possuem ao menos uma referência nesta tabela.

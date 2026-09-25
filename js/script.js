@@ -5,11 +5,10 @@
 
   const assets = {
     loginBackground: "assets/auth-login-bg.png",
-    registerBackground: "assets/auth-register-bg.png",
     teamBackground: "assets/auth-team-bg.png",
+    brandLogo: "assets/vod-review-logo.png",
     eye: "assets/eye.svg",
     upload: "assets/image.svg",
-    shield: "assets/shield.svg",
     haven: "assets/haven.png",
     rushone: "assets/rushone.png",
     greenOwls: "assets/green-owls.png",
@@ -25,6 +24,13 @@
     pucc: "assets/pucc-cardinals.png",
     chartGrid: "assets/chart-grid.svg",
     chartAverage: "assets/chart-average.png",
+    povs: [
+      "assets/POV 1.jpg",
+      "assets/POV 2.jpg",
+      "assets/POV 3.jpg",
+      "assets/POV 4.jpg",
+      "assets/POV 5.jpg"
+    ],
     agents: {
       omen: { portrait: "assets/agents/omen-portrait.png", icon: "assets/agents/omen-icon.png" },
       jett: { portrait: "assets/agents/jett-portrait.png", icon: "assets/agents/jett-icon.png" },
@@ -34,7 +40,10 @@
     }
   };
 
-  const routes = new Set(["login", "cadastro", "equipe", "dashboard", "partidas", "jogadores"]);
+  const routes = new Set([
+    "login", "equipe", "dashboard", "partidas", "jogadores", "usuarios",
+    "revisoes", "gravacoes", "sincronizacao", "revisao", "sintese"
+  ]);
 
   function getRoute() {
     const route = window.location.hash.replace(/^#\/?/, "").split("?")[0];
@@ -45,12 +54,22 @@
     window.location.hash = route;
   }
 
-  function globalNavigation(active) {
-    const items = [
-      { key: "team", label: "Meu Time", href: "#dashboard" },
-      { key: "matches", label: "Partidas", href: "#partidas" },
-      { key: "reviews", label: "Revisões", href: "#", demo: true }
-    ];
+  function getProfileFromUrl() {
+    const searchProfile = new URLSearchParams(window.location.search).get("perfil");
+    const hashQuery = window.location.hash.includes("?") ? window.location.hash.split("?")[1] : "";
+    const hashProfile = new URLSearchParams(hashQuery).get("perfil");
+    const requestedProfile = (searchProfile || hashProfile || "treinador").toLocaleLowerCase("pt-BR");
+    return ["admin", "administrador"].includes(requestedProfile) ? "admin" : "trainer";
+  }
+
+  function globalNavigation(active, profile = "trainer") {
+    const items = profile === "admin"
+      ? [{ key: "users", label: "Usuários e Equipes", href: "#usuarios" }]
+      : [
+          { key: "team", label: "Meu Time", href: "#dashboard" },
+          { key: "matches", label: "Partidas", href: "#partidas" },
+          { key: "reviews", label: "Revisões", href: "#revisoes" }
+        ];
 
     return `<nav class="global-nav" aria-label="Navegação principal">
       ${items.map((item) => `<a class="global-nav__item${item.key === active ? " is-active" : ""}" href="${item.href}"${item.demo ? " data-demo-link" : ""}${item.key === active ? ' aria-current="page"' : ""}>${item.label}</a>`).join("")}
@@ -60,9 +79,7 @@
   function teamSectionNavigation(active) {
     const items = [
       { key: "overview", label: "Visão Geral", href: "#dashboard" },
-      { key: "history", label: "Histórico", href: "#", demo: true },
-      { key: "players", label: "Players", href: "#jogadores" },
-      { key: "metrics", label: "Métricas", href: "#", demo: true }
+      { key: "players", label: "Players", href: "#jogadores" }
     ];
 
     return `<nav class="content-tabs__nav" aria-label="Seções da equipe">
@@ -70,15 +87,15 @@
     </nav>`;
   }
 
-  function teamSummary() {
-    return `<section class="team-summary" aria-label="Resumo da equipe">
+  function teamSummary({ compact = false } = {}) {
+    return `<section class="team-summary${compact ? " team-summary--compact" : ""}" aria-label="Resumo da equipe">
       <div class="team-summary__identity">
         <img class="team-summary__logo" src="${assets.rushone}" alt="Logo RUSH ONE">
         <h1 class="team-summary__name">RUSH ONE</h1>
         <div class="team-summary__meta"><span>RSH</span><span>·</span><img src="${assets.brazil}" alt="Brasil"><span>· 2W 1L · 33.85% WR</span></div>
       </div>
-      <p class="team-summary__metric">43%</p>
-      <dl class="team-summary__facts"><dt>Ranking:</dt><dd>#1</dd><dt>Info 2:</dt><dd>--</dd><dt>Info 3:</dt><dd>--</dd></dl>
+      ${compact ? "" : `<p class="team-summary__metric">43%</p>
+      <dl class="team-summary__facts"><dt>Ranking:</dt><dd>#1</dd><dt>Info 2:</dt><dd>--</dd><dt>Info 3:</dt><dd>--</dd></dl>`}
     </section>`;
   }
 
@@ -86,13 +103,13 @@
     const isLogin = options.kind === "login";
     return `
       <section class="auth-screen" data-screen="${options.kind}">
-        <aside class="auth-branding" style="--auth-background: url('../${options.background}')" aria-label="Identidade visual RUSH ONE">
+        <aside class="auth-branding" style="--auth-background: url('../${options.background}')" aria-label="Identidade visual ${isLogin ? "da plataforma VOD Review" : "da equipe"}">
           <div class="brand-heading">
-            <p class="brand-mark ${isLogin ? "" : "brand-mark--large"}">LOGO</p>
+            ${isLogin ? `<img class="brand-logo" src="${assets.brandLogo}" alt="VOD Review">` : '<p class="brand-mark brand-mark--large">LOGO DA EQUIPE</p>'}
             ${isLogin ? "" : '<span class="brand-heading__rule" aria-hidden="true"></span>'}
           </div>
           <p class="brand-footer">
-            <span>© 2026 ${isLogin ? "NOME DO SISTEMA" : "RUSH ONE ESPORTS"}</span>
+            <span class="brand-footer__identity">© 2026 ${isLogin ? `<img src="${assets.brandLogo}" alt="VOD Review">` : "RUSH ONE ESPORTS"}</span>
             <span>V4.2.1-RELEASE</span>
           </p>
         </aside>
@@ -105,6 +122,8 @@
   }
 
   function loginScreen() {
+    const profile = getProfileFromUrl();
+    const isAdmin = profile === "admin";
     return authShell({
       kind: "login",
       background: assets.loginBackground,
@@ -112,20 +131,20 @@
         <form class="auth-card" data-form="login">
           <header class="auth-title-group">
             <h1 class="auth-title">LOGIN</h1>
-            <p class="auth-description">Entre com as suas credenciais de analista ou jogador.</p>
+            <p class="auth-description">Entre com suas credenciais para acessar a plataforma.</p>
+            <p class="login-profile-hint"><span>PERFIL DO LINK</span><strong>${isAdmin ? "ADMINISTRADOR" : "TREINADOR"}</strong></p>
           </header>
           <div class="form-stack">
             <div class="field">
               <label for="login-user">E-MAIL OU USUÁRIO</label>
-              <div class="input-shell"><input id="login-user" name="user" type="text" value="analista@rushone.gg" autocomplete="username"></div>
+              <div class="input-shell"><input id="login-user" name="user" type="text" value="${isAdmin ? "admin@vodreview.gg" : "treinador@vodreview.gg"}" autocomplete="username"></div>
             </div>
             <div class="field">
               <div class="field__head">
                 <label for="login-password">SENHA DE ACESSO</label>
-                <a href="#" data-demo-link>Esqueceu a senha?</a>
               </div>
               <div class="input-shell">
-                <input id="login-password" name="password" type="password" value="rushone-terminal" autocomplete="current-password">
+                <input id="login-password" name="password" type="password" value="vodreview-demo" autocomplete="current-password">
                 <button class="password-toggle" type="button" data-password-toggle aria-label="Mostrar senha"><img src="${assets.eye}" alt=""></button>
               </div>
             </div>
@@ -137,50 +156,6 @@
           </div>
           <div class="actions">
             <button class="primary-button" type="submit">ENTRAR NO TERMINAL</button>
-            <div class="auth-footer"><span>Não possui uma conta?</span><a href="#cadastro">Criar conta</a></div>
-          </div>
-        </form>`
-    });
-  }
-
-  function registerScreen() {
-    return authShell({
-      kind: "cadastro",
-      background: assets.registerBackground,
-      content: `
-        <form class="auth-card" data-form="register">
-          <header class="auth-title-group">
-            <h1 class="auth-title">CRIAR CONTA</h1>
-            <p class="auth-description">Após finalizar seu cadastro de conta, você será direcionado para a <strong>etapa de criação da sua equipe.</strong></p>
-          </header>
-          <div class="form-stack form-stack--compact">
-            <div class="field">
-              <label for="register-name">NOME COMPLETO</label>
-              <div class="input-shell"><input id="register-name" name="name" type="text" value="Carlos Henrique 'caKo' Silva" autocomplete="name"></div>
-            </div>
-            <div class="field">
-              <label for="register-email">ENDEREÇO DE E-MAIL</label>
-              <div class="input-shell input-shell--muted"><input id="register-email" name="email" type="email" value="carlos.cako@rushone.gg" autocomplete="email"></div>
-            </div>
-            <div class="form-row">
-              <div class="field">
-                <label for="register-password">SENHA DE ACESSO</label>
-                <div class="input-shell"><input id="register-password" name="password" type="password" value="rushone2026" autocomplete="new-password"></div>
-              </div>
-              <div class="field">
-                <label for="register-confirm">CONFIRMAR SENHA</label>
-                <div class="input-shell"><input id="register-confirm" name="confirm" type="password" value="rushone2026" autocomplete="new-password"></div>
-              </div>
-            </div>
-            <label class="check-row check-row--offset">
-              <input type="checkbox" checked required>
-              <span class="check-row__box" aria-hidden="true"></span>
-              <span>Li e aceito os <a href="#" data-demo-link>Termos de Uso</a> e <a href="#" data-demo-link>Política de Privacidade</a></span>
-            </label>
-          </div>
-          <div class="actions">
-            <button class="primary-button" type="submit">CRIAR CONTA DA EQUIPE</button>
-            <div class="auth-footer"><span>Já possui uma conta?</span><a href="#login">Fazer login</a></div>
           </div>
         </form>`
     });
@@ -194,17 +169,9 @@
         <form class="auth-card auth-card--team" data-form="team">
           <header class="auth-title-group">
             <h1 class="auth-title">CRIAR EQUIPE</h1>
-            <p class="auth-description">Cada treinador/analista pode possuir apenas <strong>uma equipe ativa</strong> no sistema RUSH ONE.</p>
+            <p class="auth-description">Cadastre as informações da equipe vinculada ao treinador responsável.</p>
           </header>
           <div class="form-stack form-stack--team">
-            <div class="license-box">
-              <img class="license-box__icon" src="${assets.shield}" alt="">
-              <div class="license-box__copy">
-                <span class="license-box__eyebrow">TIPO DE LICENÇA MANDATÓRIA</span>
-                <strong class="license-box__name">VALORANT PROFESSIONAL LEAGUE</strong>
-              </div>
-              <span class="license-box__badge">LOCKED</span>
-            </div>
             <label class="logo-uploader" for="team-logo-input">
               <input class="sr-only" id="team-logo-input" type="file" accept="image/png,image/jpeg">
               <span class="logo-uploader__preview" data-logo-preview><img src="${assets.upload}" alt=""></span>
@@ -380,7 +347,7 @@
 
   function matchCatalogCard(match) {
     const resultClass = match.result === "WIN" ? " is-win" : match.result === "LOSS" ? " is-loss" : " is-upcoming";
-    return `<button class="match-catalog-card${match.selected ? " is-selected" : ""}" type="button" aria-label="${match.opponent}, ${match.status}">
+    return `<button class="match-catalog-card${match.selected ? " is-selected" : ""}" type="button" aria-label="${match.opponent}, ${match.status}"${match.selected ? ' data-open-match-detail aria-controls="selected-match-detail"' : ""}>
       <span class="match-catalog-card__top"><span>${match.date}</span><span>${match.event}</span></span>
       <span class="match-catalog-card__body">
         <span class="match-catalog-card__team"><img src="${assets.rushone}" alt=""><span><strong>RUSH ONE</strong><small>RSH</small></span></span>
@@ -414,37 +381,23 @@
   }
 
   function matchesScreen() {
-    return `<section class="matches-screen" data-screen="partidas">
-      <header class="dashboard-header">
-        <a class="dashboard-logo-slot" href="#dashboard" aria-label="Voltar para Meu Time"></a>
-        <div class="dashboard-header__spacer"></div>
-        ${globalNavigation("matches")}
-        <div class="dashboard-header__spacer"></div>
-      </header>
-      <main class="matches-page">
-        <header class="matches-page__heading">
-          <div><p class="page-eyebrow">COMPETITIVO · 2026</p><h1>PARTIDAS</h1><p>Consulte resultados, participantes e estatísticas registradas no scoreboard.</p></div>
-          <button class="matches-primary-action" type="button" data-demo-link><span aria-hidden="true">＋</span> NOVA PARTIDA</button>
-        </header>
-        <section class="matches-kpis" aria-label="Resumo das partidas">
-          <article><span>TOTAL DE PARTIDAS</span><strong>18</strong><small>Temporada 2026</small></article>
-          <article><span>VITÓRIAS</span><strong>12</strong><small class="is-positive">+3 nos últimos 30 dias</small></article>
-          <article><span>APROVEITAMENTO</span><strong>66.7%</strong><small>12W · 6L</small></article>
-          <article><span>SALDO DE ROUNDS</span><strong>+34</strong><small>238 ganhos · 204 perdidos</small></article>
-        </section>
-        <section class="matches-toolbar" aria-label="Filtros de partidas">
+    return `<section class="dashboard-screen matches-screen" data-screen="partidas">
+      ${dashboardHeader("matches")}
+      <div class="dashboard-workspace dashboard-workspace--module">
+        ${matchSidebar()}
+        <main class="dashboard-main dashboard-main--module">
+        <div class="matches-page">
+        <section class="matches-toolbar" aria-label="Pesquisa de partidas">
           <label class="matches-search"><span aria-hidden="true">⌕</span><input type="search" placeholder="Buscar adversário ou evento" aria-label="Buscar adversário ou evento"></label>
-          <label class="matches-select"><span>STATUS</span><select aria-label="Status"><option>TODOS</option><option>FINALIZADA</option><option>AGENDADA</option></select></label>
-          <label class="matches-select"><span>EVENTO</span><select aria-label="Evento"><option>VPL 2026</option><option>TODOS</option></select></label>
-          <label class="matches-select"><span>FASE</span><select aria-label="Fase"><option>TODAS</option><option>GRUPOS</option><option>PLAYOFFS</option></select></label>
         </section>
         <div class="matches-layout">
-          <aside class="match-catalog" aria-label="Lista de partidas">
+          <aside class="match-catalog" aria-label="Lista de partidas" data-match-catalog>
             <div class="match-catalog__heading"><div><span>PARTIDAS</span><strong>18 registros</strong></div><button type="button" aria-label="Ordenar partidas" data-demo-link>↕</button></div>
             <div class="match-catalog__list">${matchCatalog.map(matchCatalogCard).join("")}</div>
             <button class="match-catalog__more" type="button" data-demo-link>CARREGAR MAIS</button>
           </aside>
-          <article class="match-detail">
+          <article class="match-detail" id="selected-match-detail" data-match-detail tabindex="-1" hidden>
+            <div class="match-detail__navigation"><button class="module-secondary" type="button" data-close-match-detail>← VOLTAR À LISTAGEM</button></div>
             <header class="match-detail__hero">
               <img class="match-detail__backdrop" src="${assets.haven}" alt="">
               <div class="match-detail__meta"><span class="match-status-badge">FINALIZADA</span><span>VPL 2026 · FASE DE GRUPOS</span><span>28 MAR 2026 · 12:20</span></div>
@@ -455,7 +408,7 @@
               </div>
               <div class="match-map-summary"><span><small>MAPA 1</small><strong>HAVEN</strong><em>13 — 8</em></span><span><small>MAPA 2</small><strong>ASCENT</strong><em>13 — 10</em></span><span class="is-disabled"><small>MAPA 3</small><strong>LOTUS</strong><em>—</em></span></div>
             </header>
-            <nav class="match-detail__tabs" aria-label="Detalhes da partida"><button class="is-active" type="button">SCOREBOARD</button><button type="button" data-demo-link>VISÃO GERAL</button><button type="button" data-demo-link>GRAVAÇÕES <span>5</span></button></nav>
+            <nav class="match-detail__tabs" aria-label="Detalhes da partida"><button class="is-active" type="button">SCOREBOARD</button><button type="button" data-route="gravacoes">GRAVAÇÕES <span>5</span></button></nav>
             <div class="scoreboards">
               <div class="scoreboard-legend"><span>PLACAR FINAL E ESTATÍSTICAS INDIVIDUAIS</span><span><abbr title="Average Combat Score">ACS</abbr> · <abbr title="Kill, Assist, Survived, Traded">KAST</abbr> · <abbr title="First Kill">FK</abbr> · <abbr title="First Death">FD</abbr></span></div>
               ${scoreboardTable("RUSH ONE", "RSH", assets.rushone, "43", "home", homeScoreboard)}
@@ -463,7 +416,17 @@
             </div>
           </article>
         </div>
-      </main>
+        <section class="matches-kpis" aria-label="Resumo das partidas">
+          <article><span>TOTAL DE PARTIDAS</span><strong>18</strong><small>Temporada 2026</small></article>
+          <article><span>VITÓRIAS</span><strong>12</strong><small class="is-positive">+3 nos últimos 30 dias</small></article>
+          <article><span>APROVEITAMENTO</span><strong>66.7%</strong><small>12W · 6L</small></article>
+          <article><span>SALDO DE ROUNDS</span><strong>+34</strong><small>238 ganhos · 204 perdidos</small></article>
+        </section>
+        </div>
+        </main>
+        ${reviewPanel()}
+      </div>
+      <div class="app-toast" role="status" aria-live="polite" data-toast></div>
     </section>`;
   }
 
@@ -503,29 +466,114 @@
     </tr>`).join("");
   }
 
-  function playersScreen() {
-    return `<section class="players-screen" data-screen="jogadores">
-      <header class="dashboard-header">
-        <a class="dashboard-logo-slot" href="#dashboard" aria-label="Voltar para Meu Time"></a>
-        <div class="dashboard-header__spacer"></div>
-        ${globalNavigation("team")}
-        <div class="dashboard-header__spacer"></div>
-      </header>
-      <main class="players-page">
-        <div class="players-page__navigation">
-          ${teamSummary()}
-          <div class="content-tabs players-section-bar">
-            ${teamSectionNavigation("players")}
-            <div class="filters">
-              <label class="filter filter--year"><span>ANO</span><select aria-label="Ano"><option>2026</option><option>2025</option></select></label>
-              <label class="filter filter--event"><span>FUNÇÃO</span><select aria-label="Função"><option>ALL</option><option>CONTROLADOR</option><option>DUELISTA</option></select></label>
-              <label class="filter filter--phase"><span>STATUS</span><select aria-label="Status"><option>ATIVOS</option><option>TODOS</option></select></label>
-            </div>
+  function dashboardHeader(active = "team", profile = active === "users" ? "admin" : "trainer") {
+    return `<header class="dashboard-header">
+      <a class="dashboard-logo-slot" href="${profile === "admin" ? "#usuarios" : "#dashboard"}" aria-label="${profile === "admin" ? "Ir para a administração" : "Ir para o dashboard"}"><img src="${assets.brandLogo}" alt="VOD Review"></a>
+      <div class="dashboard-header__spacer"></div>
+      ${globalNavigation(active, profile)}
+      <div class="dashboard-header__spacer dashboard-header__profile"><span>${profile === "admin" ? "ADMINISTRADOR" : "TREINADOR"}</span><button type="button" data-logout data-profile="${profile}">SAIR</button></div>
+    </header>`;
+  }
+
+  function dashboardTeamHeader(activeSection) {
+    return `<div class="dashboard-team-header">
+      ${teamSummary({ compact: true })}
+      <div class="content-tabs players-section-bar">
+        ${teamSectionNavigation(activeSection)}
+      </div>
+    </div>`;
+  }
+
+  function matchSidebar() {
+    return `<aside class="match-sidebar" aria-label="Histórico de partidas">
+      <section class="latest-match">
+        <div class="latest-match__title"><span>ÚLTIMA PARTIDA</span><strong>WIN</strong></div>
+        <div class="latest-match__hero">
+          <img class="latest-match__map" src="${assets.haven}" alt="Mapa Haven">
+          <div class="latest-match__versus">
+            <img class="team-logo" src="${assets.rushone}" alt="RUSH ONE"><span>RSH</span><span class="score-chip">2-0</span><span>UNB</span><img class="team-logo" src="${assets.greenOwls}" alt="Green Owls">
           </div>
         </div>
-        <div class="players-layout">
+        <button class="latest-match__details" type="button" data-route="partidas">VER DETALHES</button>
+      </section>
+      <section class="panel-box upcoming-card">
+        <h2 class="section-strip">A SEGUIR</h2>
+        <article class="match-row">
+          <div class="match-row__meta"><span><strong>Mar 30</strong> · 12:20 PM</span><span>13:00</span></div>
+          <div class="match-row__team"><span class="match-row__identity"><span class="match-logo"><img src="${assets.rushone}" alt=""></span><span>UNIRV RUSH ONE</span></span></div>
+          <div class="match-row__team"><span class="match-row__identity"><span class="match-logo" style="--logo-size:22px"><img src="${assets.ceub}" alt=""></span><span>CEUB Octopus</span></span></div>
+        </article>
+      </section>
+      <section class="panel-box recent-card">
+        <h2 class="section-strip">RECENTE</h2>
+        ${recentMatches.slice(0, 4).map(matchRow).join("")}
+      </section>
+    </aside>`;
+  }
+
+  function reviewPanel() {
+    return `<aside class="agent-panel" aria-label="Painel de revisão">
+      <button class="new-match-button" type="button" data-route="partidas">+ NOVA PARTIDA</button>
+      <section class="review-card">
+        <h2 class="review-card__title">REVISÃO EM ANDAMENTO</h2>
+        <div class="review-match">
+          <img src="${assets.reviewMap}" alt="Mapa da partida">
+          <div class="review-match__copy"><p class="review-match__teams">UNIRV RUSH ONE<br>vs<br>UTFPR AZURE BEARS</p><p class="review-match__time">Sex 28 · 12:00H</p></div>
+        </div>
+        <div class="review-progress__label"><span>Progresso da revisão</span><span>4/5 POV’s</span></div>
+        <div class="review-progress__segments" aria-label="Quatro de cinco pontos de vista concluídos"><span class="is-done"></span><span class="is-done"></span><span class="is-done"></span><span class="is-done"></span><span></span></div>
+        <button class="continue-review" type="button" data-route="revisao">CONTINUAR REVISÃO</button>
+      </section>
+      <h2 class="notes-heading">Anotações Recentes</h2>
+      ${recentNotes.map(noteCard).join("")}
+    </aside>`;
+  }
+
+  function matchPlayerCard(player, side) {
+    const agentKey = player.agent.toLocaleLowerCase("pt-BR");
+    const portrait = assets.agents[agentKey]?.portrait || player.icon;
+    return `<article class="match-player-card match-player-card--${side}">
+      <span class="match-player-card__portrait"><img src="${portrait}" alt="Agente de ${player.player}"><i aria-hidden="true"></i></span>
+      <div><strong>${player.player}</strong></div>
+    </article>`;
+  }
+
+  function matchPlayersPanel() {
+    return `<aside class="agent-panel match-players-panel" aria-label="Jogadores da partida selecionada">
+      <header class="match-players-panel__heading"><span>PLAYERS DA PARTIDA</span><strong>10 JOGADORES</strong></header>
+      <section class="match-team-roster match-team-roster--home" aria-labelledby="roster-home-title">
+        <header><img src="${assets.rushone}" alt=""><span><strong id="roster-home-title">RUSH ONE</strong><small>RSH · EQUIPE DO TREINADOR</small></span></header>
+        <div>${homeScoreboard.map((player) => matchPlayerCard(player, "home")).join("")}</div>
+      </section>
+      <section class="match-team-roster match-team-roster--away" aria-labelledby="roster-away-title">
+        <header><img src="${assets.greenOwls}" alt=""><span><strong id="roster-away-title">GREEN OWLS</strong><small>UNB · ADVERSÁRIO</small></span></header>
+        <div>${opponentScoreboard.map((player) => matchPlayerCard(player, "away")).join("")}</div>
+      </section>
+    </aside>`;
+  }
+
+  function dashboardShell({ screen, activeSection, mainClass = "", content }) {
+    return `<section class="dashboard-screen${screen === "jogadores" ? " players-screen" : ""}" data-screen="${screen}">
+      ${dashboardHeader()}
+      <div class="dashboard-workspace">
+        ${matchSidebar()}
+        <main class="dashboard-main${mainClass ? ` ${mainClass}` : ""}">
+          ${dashboardTeamHeader(activeSection)}
+          ${content}
+        </main>
+        ${reviewPanel()}
+      </div>
+    </section>`;
+  }
+
+  function playersScreen() {
+    return dashboardShell({
+      screen: "jogadores",
+      activeSection: "players",
+      mainClass: "dashboard-main--players",
+      content: `<div class="players-layout">
           <aside class="roster-panel" aria-label="Elenco da equipe">
-            <header class="roster-panel__heading"><div><span>ELENCO ATIVO</span><strong>5 / 5 JOGADORES</strong></div><button type="button" aria-label="Adicionar jogador" data-demo-link>＋</button></header>
+            <header class="roster-panel__heading"><div><span>ELENCO ATIVO</span><strong>5 JOGADORES</strong></div><button type="button" aria-label="Adicionar jogador" data-demo-link>＋</button></header>
             <div class="roster-list">${rosterPlayers.map(rosterItem).join("")}</div>
             <div class="roster-panel__footer"><span><i></i> ATIVO</span><span>ATUALIZADO HOJE</span></div>
           </aside>
@@ -588,94 +636,290 @@
               <dl><div><dt>Rounds jogados</dt><dd>428</dd></div><div><dt>Abates</dt><dd>312</dd></div><div><dt>Assistências</dt><dd>184</dd></div><div><dt>First Kills</dt><dd>42</dd></div></dl>
             </section>
           </aside>
-        </div>
-      </main>
-    </section>`;
+        </div>`
+    });
   }
 
   function dashboardScreen() {
-    return `
-      <section class="dashboard-screen" data-screen="dashboard">
-        <header class="dashboard-header">
-          <div class="dashboard-logo-slot" aria-label="Área reservada para o logo"></div>
-          <div class="dashboard-header__spacer"></div>
-          ${globalNavigation("team")}
-          <div class="dashboard-header__spacer"></div>
-        </header>
-        <div class="dashboard-workspace">
-          <aside class="match-sidebar" aria-label="Histórico de partidas">
-            <section class="latest-match">
-              <div class="latest-match__title"><span>ÚLTIMA PARTIDA</span><strong>WIN</strong></div>
-              <div class="latest-match__hero">
-                <img class="latest-match__map" src="${assets.haven}" alt="Mapa Haven">
-                <div class="latest-match__versus">
-                  <img class="team-logo" src="${assets.rushone}" alt="RUSH ONE"><span>RSH</span><span class="score-chip">2-0</span><span>UNB</span><img class="team-logo" src="${assets.greenOwls}" alt="Green Owls">
-                </div>
-              </div>
-              <button class="latest-match__details" type="button">VER DETALHES</button>
-            </section>
-            <section class="panel-box upcoming-card">
-              <h2 class="section-strip">A SEGUIR</h2>
-              <article class="match-row">
-                <div class="match-row__meta"><span><strong>Mar 30</strong> · 12:20 PM</span><span>13:00</span></div>
-                <div class="match-row__team"><span class="match-row__identity"><span class="match-logo"><img src="${assets.rushone}" alt=""></span><span>UNIRV RUSH ONE</span></span></div>
-                <div class="match-row__team"><span class="match-row__identity"><span class="match-logo" style="--logo-size:22px"><img src="${assets.ceub}" alt=""></span><span>CEUB Octopus</span></span></div>
-              </article>
-            </section>
-            <section class="panel-box recent-card">
-              <h2 class="section-strip">RECENTE</h2>
-              ${recentMatches.map(matchRow).join("")}
-            </section>
-          </aside>
-          <main class="dashboard-main">
-            <div>
-              ${teamSummary()}
-              <div class="content-tabs">
-                ${teamSectionNavigation("overview")}
-                <div class="filters">
-                  <label class="filter filter--year"><span>ANO</span><select aria-label="Ano"><option>2026</option><option>2025</option></select></label>
-                  <label class="filter filter--event"><span>EVENTO</span><select aria-label="Evento"><option>ALL</option><option>VPL</option></select></label>
-                  <label class="filter filter--phase"><span>FASE</span><select aria-label="Fase"><option>ALL</option><option>GROUP</option></select></label>
-                </div>
-              </div>
-            </div>
-            <section class="player-grid" aria-label="Jogadores">${players.map(playerCard).join("")}</section>
-            <section class="performance">
-              <h2 class="performance__title">DESEMPENHO DA PARTIDA</h2>
-              <div class="chart" role="img" aria-label="Gráfico de desempenho das sete partidas mais recentes">
-                <img class="chart__grid chart__grid--1" src="${assets.chartGrid}" alt="">
-                <img class="chart__grid chart__grid--2" src="${assets.chartGrid}" alt="">
-                <img class="chart__grid chart__grid--3" src="${assets.chartGrid}" alt="">
-                <img class="chart__grid chart__grid--4" src="${assets.chartGrid}" alt="">
-                <img class="chart__average-line" src="${assets.chartAverage}" alt="">
-                <span class="chart__average-label">AVG 68.3</span>
-                <div class="chart__groups">${chartData.map(chartGroup).join("")}</div>
-              </div>
-            </section>
-          </main>
-          <aside class="agent-panel" aria-label="Painel de revisão">
-            <button class="new-match-button" type="button">+ NOVA PARTIDA</button>
-            <section class="review-card">
-              <h2 class="review-card__title">REVISÃO EM ANDAMENTO</h2>
-              <div class="review-match">
-                <img src="${assets.reviewMap}" alt="Mapa da partida">
-                <div class="review-match__copy"><p class="review-match__teams">UNIRV RUSH ONE<br>vs<br>UTFPR AZURE BEARS</p><p class="review-match__time">Sex 28 · 12:00H</p></div>
-              </div>
-              <div class="review-progress__label"><span>Progresso da revisão</span><span>4/5 POV’s</span></div>
-              <div class="review-progress__segments" aria-label="Quatro de cinco pontos de vista concluídos"><span class="is-done"></span><span class="is-done"></span><span class="is-done"></span><span class="is-done"></span><span></span></div>
-              <button class="continue-review" type="button">CONTINUAR REVISÃO</button>
-            </section>
-            <h2 class="notes-heading">Anotações Recentes</h2>
-            ${recentNotes.map(noteCard).join("")}
-          </aside>
+    return dashboardShell({
+      screen: "dashboard",
+      activeSection: "overview",
+      content: `<section class="player-grid" aria-label="Jogadores">${players.map(playerCard).join("")}</section>
+        <section class="performance">
+          <h2 class="performance__title">DESEMPENHO DA PARTIDA</h2>
+          <div class="chart" role="img" aria-label="Gráfico de desempenho das sete partidas mais recentes">
+            <img class="chart__grid chart__grid--1" src="${assets.chartGrid}" alt="">
+            <img class="chart__grid chart__grid--2" src="${assets.chartGrid}" alt="">
+            <img class="chart__grid chart__grid--3" src="${assets.chartGrid}" alt="">
+            <img class="chart__grid chart__grid--4" src="${assets.chartGrid}" alt="">
+            <img class="chart__average-line" src="${assets.chartAverage}" alt="">
+            <span class="chart__average-label">AVG 68.3</span>
+            <div class="chart__groups">${chartData.map(chartGroup).join("")}</div>
+          </div>
+        </section>`
+    });
+  }
+
+  const systemUsers = [
+    { name: "Lucas Ferreira", email: "lucas@rushone.gg", team: "RUSH ONE ESPORTS", status: "ATIVO", access: "ONTEM · 21:18" },
+    { name: "Rafael Nunes", email: "rafael@azure.gg", team: "AZURE BEARS", status: "ATIVO", access: "23 SET · 18:05" },
+    { name: "Bianca Alves", email: "bianca@caap.gg", team: "CAAP HELLHOUNDS", status: "INATIVO", access: "14 AGO · 11:30" }
+  ];
+
+  const managedTeams = [
+    { name: "RUSH ONE ESPORTS", tag: "RSH", region: "BRASIL", coach: "Lucas Ferreira", status: "ATIVA", logo: assets.rushone },
+    { name: "AZURE BEARS", tag: "AZR", region: "BRASIL", coach: "Rafael Nunes", status: "ATIVA", logo: assets.azure },
+    { name: "CAAP HELLHOUNDS", tag: "CAAP", region: "BRASIL", coach: "Bianca Alves", status: "ATIVA", logo: assets.caap }
+  ];
+
+  const reviewSessions = [
+    { status: "EM ANDAMENTO", tone: "progress", opponent: "AZURE BEARS", date: "28 MAR 2026", map: "HAVEN", progress: "4/5 POVs", action: "CONTINUAR", route: "revisao", logo: assets.azure },
+    { status: "FINALIZADA", tone: "done", opponent: "GREEN OWLS", date: "21 MAR 2026", map: "ASCENT", progress: "5/5 POVs", action: "VER SÍNTESE", route: "sintese", logo: assets.greenOwls },
+    { status: "AGUARDANDO POVs", tone: "pending", opponent: "CAAP HELLHOUNDS", date: "14 MAR 2026", map: "LOTUS", progress: "3/5 POVs", action: "GERENCIAR", route: "gravacoes", logo: assets.caap }
+  ];
+
+  function moduleShell({ screen, activeNav, eyebrow, title, description, actions = "", showHeading = true, sidePanel = null, content }) {
+    return `<section class="dashboard-screen module-screen" data-screen="${screen}">
+      ${dashboardHeader(activeNav)}
+      <div class="dashboard-workspace dashboard-workspace--module">
+        ${matchSidebar()}
+        <main class="dashboard-main dashboard-main--module">
+        <div class="module-page">
+        ${showHeading ? `<header class="module-heading">
+          <div><p class="page-eyebrow">${eyebrow}</p><h1>${title}</h1><p>${description}</p></div>
+          ${actions ? `<div class="module-heading__actions">${actions}</div>` : ""}
+        </header>` : ""}
+        ${content}
         </div>
-      </section>`;
+      </main>
+        ${sidePanel === null ? reviewPanel() : sidePanel}
+      </div>
+      <div class="app-toast" role="status" aria-live="polite" data-toast></div>
+    </section>`;
+  }
+
+  function adminShell({ title, description, actions = "", content }) {
+    return `<section class="dashboard-screen module-screen admin-screen" data-screen="usuarios">
+      ${dashboardHeader("users", "admin")}
+      <main class="admin-page">
+        <header class="module-heading">
+          <div><p class="page-eyebrow">ADMINISTRAÇÃO · ACESSOS E EQUIPES</p><h1>${title}</h1><p>${description}</p></div>
+          <div class="module-heading__actions">${actions}</div>
+        </header>
+        <p class="admin-scope-notice"><strong>ESCOPO DO ADMINISTRADOR</strong><span>Cadastro de equipes e contas de treinadores. Painéis, partidas, estatísticas e revisões permanecem restritos aos treinadores responsáveis.</span></p>
+        ${content}
+      </main>
+      <div class="app-toast" role="status" aria-live="polite" data-toast></div>
+    </section>`;
+  }
+
+  function userRow(user, index) {
+    return `<tr data-user-row data-user-index="${index}">
+      <td><span class="user-identity"><span>${user.name.split(" ").map((part) => part[0]).slice(0, 2).join("")}</span><span><strong>${user.name}</strong><small>${user.email}</small></span></span></td>
+      <td><span class="user-team"><strong>${user.team}</strong><small>TREINADOR RESPONSÁVEL</small></span></td>
+      <td><span class="status-badge status-badge--${user.status === "ATIVO" ? "success" : "muted"}" data-user-status>${user.status}</span></td>
+      <td>${user.access}</td>
+      <td class="module-table__actions"><button type="button" data-edit-user="${index}">EDITAR</button><button type="button" data-toggle-user>${user.status === "ATIVO" ? "DESATIVAR" : "ATIVAR"}</button></td>
+    </tr>`;
+  }
+
+  function userRows() {
+    return systemUsers.map(userRow).join("");
+  }
+
+  function teamRow(team, index) {
+    const isActive = team.status === "ATIVA";
+    return `<tr data-team-row data-team-index="${index}"><td><span class="managed-team"><img src="${team.logo}" alt=""><span><strong>${team.name}</strong><small>${team.tag}</small></span></span></td><td>${team.region}</td><td><span class="user-team"><strong>${team.coach}</strong><small>${isActive ? "CONTA DE TREINADOR" : "CRIE E VINCULE UMA CONTA"}</small></span></td><td><span class="status-badge status-badge--${isActive ? "success" : "pending"}">${team.status}</span></td><td class="module-table__actions"><button type="button" data-edit-team="${index}">EDITAR</button></td></tr>`;
+  }
+
+  function teamRows() {
+    return managedTeams.map(teamRow).join("");
+  }
+
+  function usersScreen() {
+    return adminShell({
+      title: "GESTÃO ADMINISTRATIVA",
+      description: "Cadastre equipes e gerencie somente as contas dos treinadores vinculados a elas.",
+      actions: '<button class="module-secondary" type="button" data-open-team-dialog>＋ NOVA EQUIPE</button><button class="module-primary" type="button" data-open-user-dialog>＋ NOVO TREINADOR</button>',
+      content: `<section class="module-stats" aria-label="Resumo administrativo"><article><span>EQUIPES CADASTRADAS</span><strong data-team-total>3</strong><small>Ativas e cadastros pendentes</small></article><article><span>TREINADORES</span><strong data-user-total>3</strong><small>Contas vinculadas a equipes</small></article><article><span>ACESSOS ATIVOS</span><strong data-user-active>2</strong><small data-user-active-detail>67% dos treinadores</small></article></section>
+        <section class="module-card admin-management-card">
+          <div class="module-toolbar"><div><span class="module-label">EQUIPES CADASTRADAS</span><small>Informações cadastrais e treinador responsável</small></div></div>
+          <div class="module-table-scroll"><table class="module-table"><thead><tr><th>EQUIPE</th><th>REGIÃO</th><th>TREINADOR</th><th>STATUS</th><th>AÇÕES</th></tr></thead><tbody data-teams-body>${teamRows()}</tbody></table></div>
+        </section>
+        <section class="module-card admin-management-card">
+          <div class="module-toolbar"><div><span class="module-label">CONTAS DE TREINADORES</span><small>O administrador não possui acesso aos dados competitivos destas equipes</small></div><label class="module-search"><span aria-hidden="true">⌕</span><input type="search" placeholder="Buscar treinador ou equipe" aria-label="Buscar treinador"></label></div>
+          <div class="module-table-scroll"><table class="module-table"><thead><tr><th>TREINADOR</th><th>EQUIPE VINCULADA</th><th>STATUS</th><th>ÚLTIMO ACESSO</th><th>AÇÕES</th></tr></thead><tbody data-users-body>${userRows()}</tbody></table></div>
+        </section>
+        <dialog class="module-dialog" data-team-dialog><form method="dialog" data-team-form><header><div><span class="module-label">CADASTRO ADMINISTRATIVO</span><h2 data-team-dialog-title>NOVA EQUIPE</h2></div><button type="button" data-close-team-dialog aria-label="Fechar">×</button></header><div class="dialog-fields"><label><span>NOME DA EQUIPE</span><input name="name" required placeholder="Nome da equipe"></label><label><span>TAG / SIGLA</span><input name="tag" required maxlength="4" placeholder="TAG"></label><label><span>REGIÃO / PAÍS</span><select name="region"><option>BRASIL</option><option>AMÉRICA DO SUL</option><option>AMÉRICA DO NORTE</option><option>EUROPA</option></select></label><p class="module-notice"><strong>Próxima etapa:</strong> após salvar a equipe, crie a conta do treinador e selecione esta equipe para concluir o vínculo.</p></div><footer><button class="module-secondary" type="button" data-close-team-dialog>CANCELAR</button><button class="module-primary" type="submit">SALVAR EQUIPE</button></footer></form></dialog>
+        <dialog class="module-dialog" data-user-dialog><form method="dialog" data-user-form><header><div><span class="module-label">CONTA DE TREINADOR</span><h2 data-user-dialog-title>NOVO TREINADOR</h2></div><button type="button" data-close-user-dialog aria-label="Fechar">×</button></header><div class="dialog-fields"><label><span>NOME COMPLETO</span><input name="name" required placeholder="Nome do treinador"></label><label><span>E-MAIL</span><input name="email" type="email" required placeholder="treinador@equipe.gg"></label><label><span>EQUIPE VINCULADA</span><select name="team">${managedTeams.map((team) => `<option>${team.name}</option>`).join("")}</select></label></div><footer><button class="module-secondary" type="button" data-close-user-dialog>CANCELAR</button><button class="module-primary" type="submit">SALVAR TREINADOR</button></footer></form></dialog>`
+    });
+  }
+
+  function reviewsScreen() {
+    return moduleShell({
+      screen: "revisoes",
+      activeNav: "reviews",
+      showHeading: false,
+      content: `<section class="module-stats" aria-label="Resumo das revisões"><article><span>EM ANDAMENTO</span><strong>1</strong><small>4 de 5 POVs revisados</small></article><article><span>FINALIZADAS</span><strong>12</strong><small>Temporada 2026</small></article><article><span>AGUARDANDO ARQUIVOS</span><strong>1</strong><small>2 gravações pendentes</small></article></section>
+        <section class="review-session-list" aria-label="Sessões de revisão">${reviewSessions.map((session) => `<article class="review-session-card"><div class="review-session-card__status"><span class="status-badge status-badge--${session.tone}">${session.status}</span><small>${session.date}</small></div><div class="review-session-card__match"><img src="${assets.rushone}" alt="RUSH ONE"><span><small>RUSH ONE</small><strong>VS</strong></span><img src="${session.logo}" alt="${session.opponent}"><span><strong>${session.opponent}</strong><small>${session.map} · MD3</small></span></div><div class="review-session-card__progress"><span>${session.progress}</span><i><b style="width:${session.progress.startsWith("5") ? "100" : session.progress.startsWith("4") ? "80" : "60"}%"></b></i></div><button class="module-secondary" type="button" data-route="${session.route}">${session.action}</button></article>`).join("")}</section>`
+    });
+  }
+
+  function recordingsScreen() {
+    return moduleShell({
+      screen: "gravacoes",
+      activeNav: "matches",
+      eyebrow: "PARTIDA · RUSH ONE VS GREEN OWLS",
+      title: "GRAVAÇÕES DA PARTIDA",
+      description: "Vincule de uma a cinco gravações POV aos participantes antes de iniciar a sincronização.",
+      actions: '<button class="module-secondary" type="button" data-route="partidas">VOLTAR À PARTIDA</button><button class="module-primary" type="button" data-route="sincronizacao">SINCRONIZAR POVs</button>',
+      content: `<section class="match-context"><div><img src="${assets.rushone}" alt=""><span><small>28 MAR 2026 · VPL</small><strong>RUSH ONE 2 — 0 GREEN OWLS</strong><em>HAVEN · MAPA 1</em></span></div><span class="status-badge status-badge--success">4 ARQUIVOS PRONTOS</span></section>
+        <section class="recording-grid" aria-label="Gravações dos jogadores">${rosterPlayers.map((player, index) => `<article class="recording-card${index === 4 ? " is-pending" : ""}" data-recording-card><header><img src="${player.icon}" alt="${player.agent}"><span><strong>${player.name}</strong><small>${player.role} · ${player.agent}</small></span><span class="status-badge status-badge--${index === 4 ? "pending" : "success"}" data-recording-status>${index === 4 ? "PENDENTE" : "PRONTO"}</span></header><div class="recording-card__file" data-recording-file><span aria-hidden="true">${index === 4 ? "＋" : "▶"}</span><div><strong>${index === 4 ? "Nenhum arquivo vinculado" : `${player.name.toLowerCase()}_haven_pov.mp4`}</strong><small>${index === 4 ? "MP4, WEBM ou MOV · até 5 GB" : `${(1.8 + index * .4).toFixed(1)} GB · 42:18`}</small></div></div><footer><label class="module-secondary recording-upload"><input type="file" accept="video/mp4,video/webm,video/quicktime" data-recording-input>SELECIONAR ARQUIVO</label><button type="button" data-remove-recording ${index === 4 ? "disabled" : ""}>REMOVER</button></footer></article>`).join("")}</section>
+        <p class="module-notice"><strong>Validação local:</strong> os arquivos são simulados e não são enviados a um servidor. É possível iniciar a sincronização com pelo menos um POV.</p>`
+    });
+  }
+
+  function synchronizationScreen() {
+    return moduleShell({
+      screen: "sincronizacao",
+      activeNav: "reviews",
+      eyebrow: "PREPARAÇÃO DA REVISÃO · HAVEN",
+      title: "SINCRONIZAÇÃO DE POVs",
+      description: "Ajuste o início de cada gravação em relação ao POV de referência para manter uma linha do tempo comum.",
+      actions: '<button class="module-secondary" type="button" data-route="gravacoes">VOLTAR ÀS GRAVAÇÕES</button><button class="module-primary" type="button" data-validate-sync>VALIDAR E REVISAR</button>',
+      content: `<section class="sync-overview"><div><span class="module-label">POV DE REFERÊNCIA</span><label><select data-reference-pov>${rosterPlayers.slice(0, 4).map((player, index) => `<option${index === 0 ? " selected" : ""}>${player.name} · ${player.agent}</option>`).join("")}</select></label></div><div><span class="module-label">DETECÇÃO DO PLACAR</span><strong data-ocr-summary>AGUARDANDO ANÁLISE</strong><small>OCR identifica o primeiro round visível em cada gravação.</small></div><button class="module-secondary" type="button" data-auto-sync>DETECTAR AUTOMATICAMENTE</button></section>
+        <section class="sync-list" aria-label="Ajustes de sincronização"><header><span>PARTICIPANTE</span><span>MARCO DETECTADO</span><span>AJUSTE MANUAL</span><span>ESTADO</span></header>${rosterPlayers.slice(0, 4).map((player, index) => `<article class="sync-row" data-sync-row><div><img src="${player.icon}" alt="${player.agent}"><span><strong>${player.name}</strong><small>${player.agent}</small></span></div><div><strong data-sync-marker>${index === 0 ? "ROUND 01 · 00:08" : "NÃO ANALISADO"}</strong><small>placar ${index === 0 ? "0 — 0" : "—"}</small></div><label><input type="range" min="-30" max="30" value="${index === 0 ? 0 : index * 2}" data-sync-range><output data-offset-value>${index === 0 ? "0.0" : `+${index * 2}.0`}s</output></label><span class="status-badge status-badge--${index === 0 ? "success" : "pending"}" data-sync-status>${index === 0 ? "REFERÊNCIA" : "PENDENTE"}</span></article>`).join("")}</section>
+        <p class="module-notice"><strong>Critério de validação:</strong> todos os POVs devem possuir um marco temporal e os ajustes precisam permanecer dentro da duração disponível.</p>`
+    });
+  }
+
+  const reviewPovSlots = [
+    ...rosterPlayers.slice(0, 4).map((player, index) => ({
+      ...player,
+      povImage: assets.povs[index] || null
+    })),
+    null
+  ];
+
+  function reviewPovViewer(activeIndex = 0) {
+    const activePlayer = reviewPovSlots[activeIndex]?.povImage ? reviewPovSlots[activeIndex] : reviewPovSlots.find((player) => player?.povImage);
+    if (!activePlayer) return "";
+    const activePlayerIndex = reviewPovSlots.indexOf(activePlayer);
+    const thumbnailIndexes = reviewPovSlots.map((_, index) => index).filter((index) => index !== activePlayerIndex);
+    return `<article class="pov-main" data-active-pov-index="${activePlayerIndex}" aria-label="POV principal de ${activePlayer.name}">
+        <img src="${activePlayer.povImage}" alt="POV simulado de ${activePlayer.name}">
+        <span class="pov-main__shade" aria-hidden="true"></span>
+        <span class="pov-main__status"><i></i> POV PRINCIPAL · SINCRONIZADO</span>
+        <span class="pov-main__identity"><strong>${activePlayer.name}</strong><small>${activePlayer.role} · ${activePlayer.agent}</small></span>
+        <span class="pov-time pov-main__time" data-pov-offset="0">${formatInitialPovTime(762)}</span>
+      </article>
+      <div class="pov-thumbnails" aria-label="Demais posições de POV">
+        ${thumbnailIndexes.map((index) => {
+          const player = reviewPovSlots[index];
+          if (!player?.povImage) return `<button class="pov-thumbnail is-empty" type="button" disabled aria-label="POV ${index + 1} indisponível">
+            <span class="pov-thumbnail__empty" aria-hidden="true">?</span><span><strong>POV INDISPONÍVEL</strong><small>ARQUIVO NÃO ENVIADO</small></span>
+          </button>`;
+          return `<button class="pov-thumbnail" type="button" data-select-pov="${index}" aria-label="Exibir POV de ${player.name} no frame principal">
+            <img src="${player.povImage}" alt=""><span class="pov-thumbnail__shade" aria-hidden="true"></span>
+            <span class="pov-thumbnail__identity"><strong>${player.name}</strong><small>${player.agent}</small></span>
+            <span class="pov-time pov-thumbnail__time" data-pov-offset="0">${formatInitialPovTime(762)}</span>
+          </button>`;
+        }).join("")}
+      </div>`;
+  }
+
+  function formatInitialPovTime(seconds) {
+    return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+  }
+
+  function reviewScreen() {
+    return moduleShell({
+      screen: "revisao",
+      activeNav: "reviews",
+      eyebrow: "SESSÃO EM ANDAMENTO · MAPA 1",
+      title: "REVISÃO MULTI-POV",
+      description: "Compare as perspectivas sincronizadas, registre observações e complete o scoreboard da partida.",
+      actions: '<button class="module-secondary" type="button" data-route="sincronizacao">AJUSTAR SINCRONIA</button><button class="module-primary" type="button" data-finalize-review>FINALIZAR REVISÃO</button><button class="module-primary is-hidden" type="button" data-open-synthesis data-route="sintese">GERAR SÍNTESE</button>',
+      sidePanel: matchPlayersPanel(),
+      content: `<div class="review-workspace"><section class="pov-stage"><div class="pov-viewer" data-pov-viewer aria-label="Visualizador de cinco posições Multi-POV">${reviewPovViewer()}</div>
+        <div class="review-player" data-review-player style="--timeline-progress:30.02%">
+          <div class="review-timeline">
+            <div class="review-timeline__track">
+              <button class="review-timeline__event is-alert" style="left:18%" type="button" data-timeline-marker="457" aria-label="Ir para o round 7, aos 7 minutos e 37 segundos"><span>R07</span></button>
+              <button class="review-timeline__event" style="left:31%" type="button" data-timeline-marker="787" aria-label="Ir para o round 12, aos 13 minutos e 7 segundos"><span>R12</span></button>
+              <button class="review-timeline__event is-alert" style="left:49%" type="button" data-timeline-marker="1244" aria-label="Ir para o round 18, aos 20 minutos e 44 segundos"><span>R18</span></button>
+              <button class="review-timeline__event" style="left:72%" type="button" data-timeline-marker="1827" aria-label="Ir para o round 21, aos 30 minutos e 27 segundos"><span>R21</span></button>
+              <span class="review-timeline__playhead" aria-hidden="true"><output data-time-tooltip>12:42</output></span>
+              <input type="range" min="0" max="2538" value="762" step="1" data-review-timeline aria-label="Linha do tempo comum dos POVs">
+            </div>
+          </div>
+          <div class="playback-bar">
+            <div class="playback-transport" aria-label="Controles de reprodução">
+              <button class="playback-control is-primary" type="button" data-playback aria-label="Reproduzir" title="Reproduzir ou pausar"><span aria-hidden="true">▶</span></button>
+              <button class="playback-control" type="button" data-review-step="-5" aria-label="Voltar 5 segundos" title="Voltar 5 segundos"><span aria-hidden="true">|◀</span></button>
+              <button class="playback-control" type="button" data-review-step="5" aria-label="Avançar 5 segundos" title="Avançar 5 segundos"><span aria-hidden="true">▶|</span></button>
+              <button class="playback-control" type="button" data-review-restart aria-label="Reiniciar reprodução" title="Reiniciar"><span aria-hidden="true">↻</span></button>
+            </div>
+            <div class="playback-time" aria-label="Tempo da reprodução"><strong data-current-time>12:42</strong><span>/</span><span data-total-time>42:18</span></div>
+            <div class="playback-round"><span>ROUND</span><strong data-round-position>12 / 24</strong></div>
+            <div class="playback-speeds" aria-label="Velocidade da reprodução">
+              <button type="button" data-playback-speed="0.5">0.5x</button><button class="is-active" type="button" data-playback-speed="1" aria-pressed="true">1x</button><button type="button" data-playback-speed="2">2x</button><button type="button" data-playback-speed="4">4x</button>
+            </div>
+          </div>
+        </div></section>
+          <aside class="review-notes"><header><div><span class="module-label">ANOTAÇÕES DA SESSÃO</span><strong data-note-count>3 REGISTROS</strong></div><span class="status-badge status-badge--progress" data-review-current-time>12:42</span></header><form data-note-form><label><span>CATEGORIA</span><select name="tag"><option>TÁTICA</option><option>ECONOMIA</option><option>SETUP</option><option>INDIVIDUAL</option></select></label><label><span>OBSERVAÇÃO</span><textarea name="body" required placeholder="Registre o ponto observado neste instante..."></textarea></label><button class="module-primary" type="submit">＋ ADICIONAR EM <span data-note-time-label>12:42</span></button></form><div class="review-note-list" data-review-note-list>${recentNotes.map((note, index) => `<article data-review-note><div><span>${note.tag} · ${note.round}</span><strong>${note.time}</strong></div><p>${note.body}</p><footer><button type="button" data-edit-note>EDITAR</button><button type="button" data-delete-note>EXCLUIR</button></footer></article>`).join("")}</div></aside></div>
+        <section class="review-completion"><div><span class="module-label">COMPLETUDE DA REVISÃO</span><strong data-review-state>4/5 POVs REVISADOS</strong></div><div class="review-checks"><span class="is-done">SINCRONIA VALIDADA</span><span class="is-done">SCOREBOARD 5/5</span><span data-final-check>REVISÃO PENDENTE</span></div></section>`
+    });
+  }
+
+  function synthesisScreen() {
+    return moduleShell({
+      screen: "sintese",
+      activeNav: "reviews",
+      eyebrow: "REVISÃO FINALIZADA · RUSH ONE VS GREEN OWLS",
+      title: "SÍNTESE DA REVISÃO",
+      description: "Consolide os principais pontos registrados e mantenha o histórico de versões da análise.",
+      actions: '<button class="module-secondary" type="button" data-route="revisao">VOLTAR À REVISÃO</button><button class="module-primary" type="button" data-generate-synthesis>GERAR NOVA VERSÃO</button>',
+      content: `<section class="synthesis-summary"><article><span>PARTIDA</span><strong>RUSH ONE 2 — 0 GREEN OWLS</strong><small>HAVEN · 28 MAR 2026</small></article><article><span>BASE DA SÍNTESE</span><strong>3 ANOTAÇÕES</strong><small>4 POVs sincronizados</small></article><article><span>STATUS</span><strong>REVISÃO FINALIZADA</strong><small>Scoreboard completo</small></article></section>
+        <div class="synthesis-layout"><section class="module-card synthesis-result"><header><div><span class="module-label">VERSÃO ATUAL</span><h2>SÍNTESE TÁTICA</h2></div><span class="status-badge status-badge--muted" data-synthesis-status>NÃO GERADA</span></header><div class="synthesis-placeholder" data-synthesis-placeholder><span>Σ</span><strong>NENHUMA SÍNTESE GERADA</strong><p>Use as anotações da revisão para criar uma versão consolidada e editável.</p></div><div class="synthesis-copy is-hidden" data-synthesis-copy><h3>VISÃO GERAL</h3><p>A equipe manteve boa organização defensiva, mas apresentou atraso nas rotações para o bomb A. O uso coordenado de utilitários foi decisivo nos retakes dos rounds finais.</p><h3>PONTOS DE ATENÇÃO</h3><ul><li>Antecipar a rotação após o primeiro contato no A.</li><li>Evitar compras fragmentadas em rounds de economia.</li><li>Preservar a Viper Pit para o segundo contato no pós-plant.</li></ul><h3>PRÓXIMA SESSÃO</h3><p>Treinar comunicação de retake e execução de crossfire em situações 3v3.</p></div></section><aside class="module-card synthesis-history"><header><span class="module-label">HISTÓRICO DE VERSÕES</span><small>Registro local da prototipação</small></header><div data-synthesis-history><p class="empty-history">A primeira versão aparecerá após a geração.</p></div></aside></div>`
+    });
   }
 
   function bindCommonInteractions() {
+    const showToast = (message) => {
+      const toast = document.querySelector("[data-toast]");
+      if (!toast) return;
+      toast.textContent = message;
+      toast.classList.add("is-visible");
+      window.setTimeout(() => toast.classList.remove("is-visible"), 2600);
+    };
+
+    document.querySelectorAll("[data-route]").forEach((button) => {
+      button.addEventListener("click", () => navigate(button.dataset.route));
+    });
+
     document.querySelectorAll("[data-demo-link]").forEach((link) => {
       link.addEventListener("click", (event) => event.preventDefault());
     });
+
+    const matchCatalogPanel = document.querySelector("[data-match-catalog]");
+    const selectedMatchDetail = document.querySelector("[data-match-detail]");
+    const openMatchDetail = document.querySelector("[data-open-match-detail]");
+    const closeMatchDetail = document.querySelector("[data-close-match-detail]");
+    if (matchCatalogPanel && selectedMatchDetail && openMatchDetail) {
+      openMatchDetail.addEventListener("click", () => {
+        matchCatalogPanel.hidden = true;
+        selectedMatchDetail.hidden = false;
+        selectedMatchDetail.focus({ preventScroll: true });
+      });
+    }
+    if (matchCatalogPanel && selectedMatchDetail && closeMatchDetail) {
+      closeMatchDetail.addEventListener("click", () => {
+        selectedMatchDetail.hidden = true;
+        matchCatalogPanel.hidden = false;
+        openMatchDetail.focus({ preventScroll: true });
+      });
+    }
 
     document.querySelectorAll("[data-password-toggle]").forEach((button) => {
       button.addEventListener("click", () => {
@@ -687,13 +931,24 @@
     });
 
     const loginForm = document.querySelector('[data-form="login"]');
-    if (loginForm) loginForm.addEventListener("submit", (event) => { event.preventDefault(); navigate("dashboard"); });
+    if (loginForm) loginForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const profile = getProfileFromUrl();
+      window.sessionStorage.setItem("tactivod-profile", profile);
+      navigate(profile === "admin" ? "usuarios" : "dashboard");
+    });
 
-    const registerForm = document.querySelector('[data-form="register"]');
-    if (registerForm) registerForm.addEventListener("submit", (event) => { event.preventDefault(); navigate("equipe"); });
+    document.querySelectorAll("[data-logout]").forEach((button) => button.addEventListener("click", () => {
+      const profile = button.dataset.profile === "admin" ? "admin" : "treinador";
+      window.sessionStorage.removeItem("tactivod-profile");
+      const loginUrl = new URL(window.location.href);
+      loginUrl.search = `?perfil=${profile}`;
+      loginUrl.hash = "login";
+      window.location.assign(loginUrl.toString());
+    }));
 
-    const teamForm = document.querySelector('[data-form="team"]');
-    if (teamForm) teamForm.addEventListener("submit", (event) => { event.preventDefault(); navigate("dashboard"); });
+    const teamSetupForm = document.querySelector('[data-form="team"]');
+    if (teamSetupForm) teamSetupForm.addEventListener("submit", (event) => { event.preventDefault(); navigate("dashboard"); });
 
     const logoInput = document.querySelector("#team-logo-input");
     if (logoInput) {
@@ -708,36 +963,372 @@
       });
     }
 
-    function bindTabGroup(selector) {
-      // O Figma só detalha a Visão Geral do Dashboard. As demais abas mudam
-      // apenas o estado visual ativo, sem criar conteúdo que não existe no protótipo.
-      document.querySelectorAll(selector).forEach((button) => {
-        button.addEventListener("click", () => {
-          document.querySelectorAll(selector).forEach((item) => item.classList.toggle("is-active", item === button));
-        });
+    const userDialog = document.querySelector("[data-user-dialog]");
+    const userForm = document.querySelector("[data-user-form]");
+    const usersBody = document.querySelector("[data-users-body]");
+    const teamDialog = document.querySelector("[data-team-dialog]");
+    const teamForm = document.querySelector("[data-team-form]");
+    const teamsBody = document.querySelector("[data-teams-body]");
+    const refreshUserStats = () => {
+      const total = systemUsers.length;
+      const active = systemUsers.filter((user) => user.status === "ATIVO").length;
+      const totalOutput = document.querySelector("[data-user-total]");
+      const activeOutput = document.querySelector("[data-user-active]");
+      const detailOutput = document.querySelector("[data-user-active-detail]");
+      if (totalOutput) totalOutput.textContent = String(total);
+      if (activeOutput) activeOutput.textContent = String(active);
+      if (detailOutput) detailOutput.textContent = `${Math.round((active / total) * 100)}% dos treinadores`;
+    };
+    const openUserEditor = (index) => {
+      const user = systemUsers[index];
+      if (!user || !userForm || !userDialog) return;
+      userForm.dataset.userIndex = String(index);
+      userForm.elements.name.value = user.name;
+      userForm.elements.email.value = user.email;
+      userForm.elements.team.value = user.team;
+      document.querySelector("[data-user-dialog-title]").textContent = "EDITAR TREINADOR";
+      userDialog.showModal();
+    };
+    const bindUserRowActions = (row) => {
+      const index = Number(row.dataset.userIndex);
+      row.querySelector("[data-edit-user]").addEventListener("click", () => openUserEditor(index));
+      row.querySelector("[data-toggle-user]").addEventListener("click", (event) => {
+        const status = row.querySelector("[data-user-status]");
+        const activating = status.textContent === "INATIVO";
+        systemUsers[index].status = activating ? "ATIVO" : "INATIVO";
+        status.textContent = systemUsers[index].status;
+        status.className = `status-badge status-badge--${activating ? "success" : "muted"}`;
+        event.currentTarget.textContent = activating ? "DESATIVAR" : "ATIVAR";
+        refreshUserStats();
+        showToast(`Usuário ${activating ? "ativado" : "desativado"}.`);
       });
-    }
+    };
+    document.querySelectorAll("[data-open-user-dialog]").forEach((button) => button.addEventListener("click", () => {
+      if (userForm) {
+        userForm.reset();
+        delete userForm.dataset.userIndex;
+      }
+      const title = document.querySelector("[data-user-dialog-title]");
+      if (title) title.textContent = "NOVO TREINADOR";
+      if (userDialog) userDialog.showModal();
+    }));
+    document.querySelectorAll("[data-close-user-dialog]").forEach((button) => button.addEventListener("click", () => userDialog && userDialog.close()));
+    document.querySelectorAll("[data-user-row]").forEach(bindUserRowActions);
+    const userSearch = document.querySelector('.module-search input[type="search"]');
+    if (userSearch) userSearch.addEventListener("input", () => {
+      const term = userSearch.value.trim().toLocaleLowerCase("pt-BR");
+      usersBody.querySelectorAll("[data-user-row]").forEach((row) => {
+        row.hidden = !row.textContent.toLocaleLowerCase("pt-BR").includes(term);
+      });
+    });
+    if (userForm) userForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const index = userForm.dataset.userIndex === undefined ? -1 : Number(userForm.dataset.userIndex);
+      const previousTeamName = index >= 0 ? systemUsers[index].team : "";
+      const user = {
+        name: userForm.elements.name.value.trim(),
+        email: userForm.elements.email.value.trim(),
+        team: userForm.elements.team.value,
+        status: index >= 0 ? systemUsers[index].status : "ATIVO",
+        access: index >= 0 ? systemUsers[index].access : "AINDA NÃO ACESSOU"
+      };
+      if (index >= 0) {
+        systemUsers[index] = user;
+        const currentRow = usersBody.querySelector(`[data-user-index="${index}"]`);
+        currentRow.insertAdjacentHTML("afterend", userRow(user, index));
+        const updatedRow = currentRow.nextElementSibling;
+        currentRow.remove();
+        bindUserRowActions(updatedRow);
+      } else {
+        const newIndex = systemUsers.push(user) - 1;
+        usersBody.insertAdjacentHTML("beforeend", userRow(user, newIndex));
+        bindUserRowActions(usersBody.lastElementChild);
+      }
+      userDialog.close();
+      refreshUserStats();
+      if (previousTeamName && previousTeamName !== user.team) {
+        const previousTeam = managedTeams.find((team) => team.name === previousTeamName);
+        if (previousTeam) {
+          previousTeam.coach = "AGUARDANDO VÍNCULO";
+          previousTeam.status = "PENDENTE";
+        }
+      }
+      const linkedTeam = managedTeams.find((team) => team.name === user.team);
+      if (linkedTeam) {
+        linkedTeam.coach = user.name;
+        linkedTeam.status = "ATIVA";
+      }
+      if (teamsBody) {
+        teamsBody.innerHTML = teamRows();
+        teamsBody.querySelectorAll("[data-team-row]").forEach(bindTeamRowActions);
+      }
+      showToast(index >= 0 ? "Treinador atualizado." : "Treinador cadastrado e vinculado.");
+    });
 
-    bindTabGroup("[data-nav-tab]");
-    bindTabGroup("[data-content-tab]");
+    const openTeamEditor = (index) => {
+      const team = managedTeams[index];
+      if (!team || !teamForm || !teamDialog) return;
+      teamForm.dataset.teamIndex = String(index);
+      teamForm.elements.name.value = team.name;
+      teamForm.elements.tag.value = team.tag;
+      teamForm.elements.region.value = team.region;
+      document.querySelector("[data-team-dialog-title]").textContent = "EDITAR EQUIPE";
+      teamDialog.showModal();
+    };
+    function bindTeamRowActions(row) {
+      const button = row.querySelector("[data-edit-team]");
+      if (button) button.addEventListener("click", () => openTeamEditor(Number(row.dataset.teamIndex)));
+    }
+    document.querySelectorAll("[data-team-row]").forEach(bindTeamRowActions);
+    document.querySelectorAll("[data-open-team-dialog]").forEach((button) => button.addEventListener("click", () => {
+      if (!teamForm || !teamDialog) return;
+      teamForm.reset();
+      delete teamForm.dataset.teamIndex;
+      document.querySelector("[data-team-dialog-title]").textContent = "NOVA EQUIPE";
+      teamDialog.showModal();
+    }));
+    document.querySelectorAll("[data-close-team-dialog]").forEach((button) => button.addEventListener("click", () => teamDialog && teamDialog.close()));
+    if (teamForm) teamForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const index = teamForm.dataset.teamIndex === undefined ? -1 : Number(teamForm.dataset.teamIndex);
+      const previousName = index >= 0 ? managedTeams[index].name : "";
+      const team = {
+        name: teamForm.elements.name.value.trim().toUpperCase(),
+        tag: teamForm.elements.tag.value.trim().toUpperCase(),
+        region: teamForm.elements.region.value,
+        coach: index >= 0 ? managedTeams[index].coach : "AGUARDANDO VÍNCULO",
+        status: index >= 0 ? managedTeams[index].status : "PENDENTE",
+        logo: index >= 0 ? managedTeams[index].logo : assets.rushone
+      };
+      if (index >= 0) managedTeams[index] = team;
+      else managedTeams.push(team);
+      systemUsers.forEach((user) => {
+        if (user.team === previousName) user.team = team.name;
+      });
+      teamsBody.innerHTML = teamRows();
+      teamsBody.querySelectorAll("[data-team-row]").forEach(bindTeamRowActions);
+      usersBody.innerHTML = userRows();
+      usersBody.querySelectorAll("[data-user-row]").forEach(bindUserRowActions);
+      document.querySelector("[data-team-total]").textContent = String(managedTeams.length);
+      const teamSelect = userForm && userForm.elements.team;
+      if (teamSelect) teamSelect.innerHTML = managedTeams.map((item) => `<option>${item.name}</option>`).join("");
+      teamDialog.close();
+      showToast(index >= 0 ? "Equipe atualizada." : "Equipe cadastrada. Agora vincule o treinador.");
+    });
+
+    document.querySelectorAll("[data-recording-input]").forEach((input) => input.addEventListener("change", () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const card = input.closest("[data-recording-card]");
+      card.classList.remove("is-pending");
+      card.querySelector("[data-recording-status]").className = "status-badge status-badge--success";
+      card.querySelector("[data-recording-status]").textContent = "PRONTO";
+      card.querySelector("[data-recording-file] strong").textContent = file.name;
+      card.querySelector("[data-recording-file] small").textContent = `${(file.size / 1073741824).toFixed(2)} GB · arquivo local`;
+      card.querySelector("[data-recording-file] > span").textContent = "▶";
+      card.querySelector("[data-remove-recording]").disabled = false;
+      showToast("Gravação vinculada ao participante.");
+    }));
+    document.querySelectorAll("[data-remove-recording]").forEach((button) => button.addEventListener("click", () => {
+      const card = button.closest("[data-recording-card]");
+      card.classList.add("is-pending");
+      card.querySelector("[data-recording-status]").className = "status-badge status-badge--pending";
+      card.querySelector("[data-recording-status]").textContent = "PENDENTE";
+      card.querySelector("[data-recording-file] strong").textContent = "Nenhum arquivo vinculado";
+      card.querySelector("[data-recording-file] small").textContent = "MP4, WEBM ou MOV · até 5 GB";
+      card.querySelector("[data-recording-file] > span").textContent = "＋";
+      const input = card.querySelector("[data-recording-input]");
+      if (input) input.value = "";
+      button.disabled = true;
+      showToast("Gravação removida da partida.");
+    }));
+
+    document.querySelectorAll("[data-sync-range]").forEach((range) => range.addEventListener("input", () => {
+      const value = Number(range.value);
+      range.closest("label").querySelector("[data-offset-value]").textContent = `${value > 0 ? "+" : ""}${value.toFixed(1)}s`;
+    }));
+    const autoSync = document.querySelector("[data-auto-sync]");
+    if (autoSync) autoSync.addEventListener("click", () => {
+      document.querySelectorAll("[data-sync-row]").forEach((row, index) => {
+        row.querySelector("[data-sync-marker]").textContent = `ROUND 01 · 00:${String(8 + index * 2).padStart(2, "0")}`;
+        const status = row.querySelector("[data-sync-status]");
+        status.className = "status-badge status-badge--success";
+        status.textContent = index === 0 ? "REFERÊNCIA" : "SINCRONIZADO";
+      });
+      document.querySelector("[data-ocr-summary]").textContent = "4/4 MARCOS IDENTIFICADOS";
+      showToast("Detecção automática concluída.");
+    });
+    const validateSync = document.querySelector("[data-validate-sync]");
+    if (validateSync) validateSync.addEventListener("click", () => {
+      showToast("Sincronização validada. Abrindo a revisão...");
+      window.setTimeout(() => navigate("revisao"), 450);
+    });
+
+    const playback = document.querySelector("[data-playback]");
+    const reviewTimeline = document.querySelector("[data-review-timeline]");
+    const reviewPlayer = document.querySelector("[data-review-player]");
+    const formatReviewTime = (seconds) => {
+      const value = Math.max(0, Math.round(Number(seconds)));
+      return `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
+    };
+    const updateReviewTimeline = (value) => {
+      if (!reviewTimeline || !reviewPlayer) return;
+      const seconds = Math.max(Number(reviewTimeline.min), Math.min(Number(reviewTimeline.max), Number(value)));
+      reviewTimeline.value = String(seconds);
+      const percentage = (seconds / Number(reviewTimeline.max)) * 100;
+      reviewPlayer.style.setProperty("--timeline-progress", `${percentage}%`);
+      const currentTime = document.querySelector("[data-current-time]");
+      const tooltip = document.querySelector("[data-time-tooltip]");
+      const reviewCurrentTime = document.querySelector("[data-review-current-time]");
+      const noteTimeLabel = document.querySelector("[data-note-time-label]");
+      const roundPosition = document.querySelector("[data-round-position]");
+      const formatted = formatReviewTime(seconds);
+      if (currentTime) currentTime.textContent = formatted;
+      if (tooltip) tooltip.textContent = formatted;
+      if (reviewCurrentTime) reviewCurrentTime.textContent = formatted;
+      if (noteTimeLabel) noteTimeLabel.textContent = formatted;
+      document.querySelectorAll("[data-pov-offset]").forEach((time) => {
+        time.textContent = formatReviewTime(seconds + Number(time.dataset.povOffset));
+      });
+      if (roundPosition) {
+        const roundAnchors = [
+          { time: 0, round: 1 }, { time: 457, round: 7 }, { time: 787, round: 12 },
+          { time: 1244, round: 18 }, { time: 1827, round: 21 }, { time: 2538, round: 24 }
+        ];
+        const nextAnchorIndex = roundAnchors.findIndex((anchor) => anchor.time >= seconds);
+        const nextAnchor = roundAnchors[nextAnchorIndex < 0 ? roundAnchors.length - 1 : nextAnchorIndex];
+        const previousAnchor = roundAnchors[Math.max(0, (nextAnchorIndex < 0 ? roundAnchors.length - 1 : nextAnchorIndex) - 1)];
+        const segmentProgress = nextAnchor.time === previousAnchor.time ? 0 : (seconds - previousAnchor.time) / (nextAnchor.time - previousAnchor.time);
+        const round = Math.max(1, Math.min(24, Math.round(previousAnchor.round + segmentProgress * (nextAnchor.round - previousAnchor.round))));
+        roundPosition.textContent = `${String(round).padStart(2, "0")} / 24`;
+      }
+    };
+    if (playback) playback.addEventListener("click", () => {
+      const playing = playback.getAttribute("aria-label") === "Pausar";
+      playback.querySelector("span").textContent = playing ? "▶" : "❚❚";
+      playback.setAttribute("aria-label", playing ? "Reproduzir" : "Pausar");
+      playback.setAttribute("aria-pressed", String(!playing));
+      document.querySelector(".pov-stage").classList.toggle("is-playing", !playing);
+    });
+    if (reviewTimeline) reviewTimeline.addEventListener("input", () => updateReviewTimeline(reviewTimeline.value));
+    document.querySelectorAll("[data-review-step]").forEach((button) => button.addEventListener("click", () => {
+      updateReviewTimeline(Number(reviewTimeline.value) + Number(button.dataset.reviewStep));
+    }));
+    const restartReview = document.querySelector("[data-review-restart]");
+    if (restartReview) restartReview.addEventListener("click", () => updateReviewTimeline(0));
+    document.querySelectorAll("[data-timeline-marker]").forEach((button) => button.addEventListener("click", () => updateReviewTimeline(button.dataset.timelineMarker)));
+    document.querySelectorAll("[data-playback-speed]").forEach((button) => button.addEventListener("click", () => {
+      document.querySelectorAll("[data-playback-speed]").forEach((item) => {
+        const active = item === button;
+        item.classList.toggle("is-active", active);
+        item.setAttribute("aria-pressed", String(active));
+      });
+    }));
+    const povViewer = document.querySelector("[data-pov-viewer]");
+    const bindPovSelectors = () => {
+      if (!povViewer) return;
+      povViewer.querySelectorAll("[data-select-pov]").forEach((button) => button.addEventListener("click", () => {
+        povViewer.innerHTML = reviewPovViewer(Number(button.dataset.selectPov));
+        bindPovSelectors();
+        updateReviewTimeline(reviewTimeline ? reviewTimeline.value : 762);
+      }));
+    };
+    bindPovSelectors();
+    const noteList = document.querySelector("[data-review-note-list]");
+    const updateNoteCount = () => {
+      const count = noteList ? noteList.querySelectorAll("[data-review-note]").length : 0;
+      const output = document.querySelector("[data-note-count]");
+      if (output) output.textContent = `${count} ${count === 1 ? "REGISTRO" : "REGISTROS"}`;
+    };
+    const bindNoteActions = (scope = document) => {
+      scope.querySelectorAll("[data-delete-note]").forEach((button) => button.addEventListener("click", () => {
+        button.closest("[data-review-note]").remove();
+        updateNoteCount();
+        showToast("Anotação excluída.");
+      }));
+      scope.querySelectorAll("[data-edit-note]").forEach((button) => button.addEventListener("click", () => {
+        const note = button.closest("[data-review-note]");
+        const text = note.querySelector("p");
+        const edited = window.prompt("Edite a anotação:", text.textContent);
+        if (edited && edited.trim()) {
+          text.textContent = edited.trim();
+          showToast("Anotação atualizada.");
+        }
+      }));
+    };
+    bindNoteActions();
+    const noteForm = document.querySelector("[data-note-form]");
+    if (noteForm) noteForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const tag = noteForm.elements.tag.value;
+      const body = noteForm.elements.body.value.trim();
+      if (!body) return;
+      const wrapper = document.createElement("div");
+      const reviewTime = document.querySelector("[data-current-time]")?.textContent || "12:42";
+      wrapper.innerHTML = `<article data-review-note><div><span>${tag} · ROUND ATUAL</span><strong>${reviewTime}</strong></div><p></p><footer><button type="button" data-edit-note>EDITAR</button><button type="button" data-delete-note>EXCLUIR</button></footer></article>`;
+      const note = wrapper.firstElementChild;
+      note.querySelector("p").textContent = body;
+      noteList.prepend(note);
+      bindNoteActions(note);
+      noteForm.reset();
+      updateNoteCount();
+      showToast("Anotação adicionada à linha do tempo.");
+    });
+    const finalizeReview = document.querySelector("[data-finalize-review]");
+    if (finalizeReview) finalizeReview.addEventListener("click", () => {
+      finalizeReview.disabled = true;
+      finalizeReview.textContent = "REVISÃO FINALIZADA";
+      document.querySelector("[data-review-state]").textContent = "5/5 POVs REVISADOS";
+      const finalCheck = document.querySelector("[data-final-check]");
+      finalCheck.textContent = "REVISÃO FINALIZADA";
+      finalCheck.classList.add("is-done");
+      document.querySelector("[data-open-synthesis]").classList.remove("is-hidden");
+      showToast("Revisão finalizada. A síntese está disponível.");
+    });
+
+    const generateSynthesis = document.querySelector("[data-generate-synthesis]");
+    if (generateSynthesis) generateSynthesis.addEventListener("click", () => {
+      document.querySelector("[data-synthesis-placeholder]").classList.add("is-hidden");
+      document.querySelector("[data-synthesis-copy]").classList.remove("is-hidden");
+      const status = document.querySelector("[data-synthesis-status]");
+      status.className = "status-badge status-badge--success";
+      status.textContent = "VERSÃO 1 GERADA";
+      document.querySelector("[data-synthesis-history]").innerHTML = '<article class="history-version"><span>V1</span><div><strong>SÍNTESE TÁTICA</strong><small>Gerada agora · 3 anotações</small></div><span class="status-badge status-badge--success">ATUAL</span></article>';
+      generateSynthesis.textContent = "GERAR NOVA VERSÃO";
+      showToast("Síntese gerada a partir das anotações.");
+    });
   }
 
   function render() {
     const route = getRoute();
     if (!window.location.hash) window.history.replaceState(null, "", "#login");
+    const authenticatedProfile = window.sessionStorage.getItem("tactivod-profile");
+    if (authenticatedProfile === "admin" && !["login", "usuarios", "equipe"].includes(route)) {
+      navigate("usuarios");
+      return;
+    }
+    if (authenticatedProfile === "trainer" && ["usuarios", "equipe"].includes(route)) {
+      navigate("dashboard");
+      return;
+    }
 
     const screens = {
       login: loginScreen,
-      cadastro: registerScreen,
-      equipe: teamScreen,
+      equipe: usersScreen,
       dashboard: dashboardScreen,
       partidas: matchesScreen,
-      jogadores: playersScreen
+      jogadores: playersScreen,
+      usuarios: usersScreen,
+      revisoes: reviewsScreen,
+      gravacoes: recordingsScreen,
+      sincronizacao: synchronizationScreen,
+      revisao: reviewScreen,
+      sintese: synthesisScreen
     };
 
     app.innerHTML = screens[route]();
-    const titles = { dashboard: "RUSH ONE — Dashboard", partidas: "RUSH ONE — Partidas", jogadores: "RUSH ONE — Jogadores" };
-    document.title = titles[route] || "RUSH ONE — Terminal";
+    const titles = { equipe: "VOD Review — Administração", dashboard: "RUSH ONE — Dashboard", partidas: "RUSH ONE — Partidas", jogadores: "RUSH ONE — Jogadores", usuarios: "VOD Review — Administração", revisoes: "RUSH ONE — Revisões", gravacoes: "RUSH ONE — Gravações", sincronizacao: "RUSH ONE — Sincronização", revisao: "RUSH ONE — Revisão Multi-POV", sintese: "RUSH ONE — Síntese" };
+    document.title = titles[route] || "VOD Review — Plataforma de análise competitiva";
     bindCommonInteractions();
   }
 
