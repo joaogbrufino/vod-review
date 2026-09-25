@@ -34,7 +34,7 @@
     }
   };
 
-  const routes = new Set(["login", "cadastro", "equipe", "dashboard"]);
+  const routes = new Set(["login", "cadastro", "equipe", "dashboard", "partidas", "jogadores"]);
 
   function getRoute() {
     const route = window.location.hash.replace(/^#\/?/, "").split("?")[0];
@@ -43,6 +43,43 @@
 
   function navigate(route) {
     window.location.hash = route;
+  }
+
+  function globalNavigation(active) {
+    const items = [
+      { key: "team", label: "Meu Time", href: "#dashboard" },
+      { key: "matches", label: "Partidas", href: "#partidas" },
+      { key: "reviews", label: "Revisões", href: "#", demo: true }
+    ];
+
+    return `<nav class="global-nav" aria-label="Navegação principal">
+      ${items.map((item) => `<a class="global-nav__item${item.key === active ? " is-active" : ""}" href="${item.href}"${item.demo ? " data-demo-link" : ""}${item.key === active ? ' aria-current="page"' : ""}>${item.label}</a>`).join("")}
+    </nav>`;
+  }
+
+  function teamSectionNavigation(active) {
+    const items = [
+      { key: "overview", label: "Visão Geral", href: "#dashboard" },
+      { key: "history", label: "Histórico", href: "#", demo: true },
+      { key: "players", label: "Players", href: "#jogadores" },
+      { key: "metrics", label: "Métricas", href: "#", demo: true }
+    ];
+
+    return `<nav class="content-tabs__nav" aria-label="Seções da equipe">
+      ${items.map((item) => `<a class="content-tab${item.key === active ? " is-active" : ""}" href="${item.href}"${item.demo ? " data-demo-link" : ""}${item.key === active ? ' aria-current="page"' : ""}>${item.label}</a>`).join("")}
+    </nav>`;
+  }
+
+  function teamSummary() {
+    return `<section class="team-summary" aria-label="Resumo da equipe">
+      <div class="team-summary__identity">
+        <img class="team-summary__logo" src="${assets.rushone}" alt="Logo RUSH ONE">
+        <h1 class="team-summary__name">RUSH ONE</h1>
+        <div class="team-summary__meta"><span>RSH</span><span>·</span><img src="${assets.brazil}" alt="Brasil"><span>· 2W 1L · 33.85% WR</span></div>
+      </div>
+      <p class="team-summary__metric">43%</p>
+      <dl class="team-summary__facts"><dt>Ranking:</dt><dd>#1</dd><dt>Info 2:</dt><dd>--</dd><dt>Info 3:</dt><dd>--</dd></dl>
+    </section>`;
   }
 
   function authShell(options) {
@@ -247,13 +284,13 @@
   ];
 
   const chartData = [
-    { x: 30, date: "04/19", logo: assets.ceub, logoSize: 31, logoOffset: 8, logoTop: 257, a: ["W", 74, 95], b: ["L", 63, 64] },
-    { x: 165, date: "04/10", logo: assets.azure, logoSize: 31, logoOffset: 9, logoTop: 257, a: ["W", 72, 90], b: ["L", 65, 70] },
-    { x: 300, date: "02/07", logo: assets.caap, logoSize: 31, logoOffset: 11, logoTop: 257, a: ["L", 63, 64], b: ["L", 66, 73] },
-    { x: 435, date: "01/25", logo: assets.a2e, logoSize: 34, logoOffset: 10, logoTop: 255, a: ["L", 68, 78], b: ["L", 68, 78] },
-    { x: 570, date: "01/24", logo: assets.wolf, logoSize: 31, logoOffset: 9, logoTop: 257, a: ["W", 77, 104], b: ["L", 57, 48] },
-    { x: 705, date: "01/24", logo: assets.poli, logoSize: 33, logoOffset: 9, logoTop: 259, a: ["W", 73, 92], b: ["L", 68, 78] },
-    { x: 840, date: "01/18", logo: assets.pucc, logoSize: 29, logoOffset: -3, logoTop: 257, a: ["L", 68, 78], b: null }
+    { x: "0%", date: "04/19", logo: assets.ceub, logoSize: 31, logoOffset: 8, logoTop: 257, a: ["W", 74, 95], b: ["L", 63, 64] },
+    { x: "16.66%", date: "04/10", logo: assets.azure, logoSize: 31, logoOffset: 9, logoTop: 257, a: ["W", 72, 90], b: ["L", 65, 70] },
+    { x: "33.33%", date: "02/07", logo: assets.caap, logoSize: 31, logoOffset: 11, logoTop: 257, a: ["L", 63, 64], b: ["L", 66, 73] },
+    { x: "50%", date: "01/25", logo: assets.a2e, logoSize: 34, logoOffset: 10, logoTop: 255, a: ["L", 68, 78], b: ["L", 68, 78] },
+    { x: "66.66%", date: "01/24", logo: assets.wolf, logoSize: 31, logoOffset: 9, logoTop: 257, a: ["W", 77, 104], b: ["L", 57, 48] },
+    { x: "83.33%", date: "01/24", logo: assets.poli, logoSize: 33, logoOffset: 9, logoTop: 259, a: ["W", 73, 92], b: ["L", 68, 78] },
+    { x: "100%", date: "01/18", logo: assets.pucc, logoSize: 29, logoOffset: -3, logoTop: 257, a: ["L", 68, 78], b: null }
   ];
 
   function matchRow(match) {
@@ -310,12 +347,250 @@
     </div>`;
   }
 
-  function chartGroup(item) {
-    return `<div class="chart-group" style="--group-x:${item.x}px;--logo-size:${item.logoSize}px;--logo-offset:${item.logoOffset}px;--logo-top:${item.logoTop}px">
+  function chartGroup(item, index) {
+    return `<div class="chart-group" style="--group-x:${item.x};--logo-size:${item.logoSize}px;--logo-offset:${item.logoOffset}px;--logo-top:${item.logoTop}px" data-chart-position="${index}">
       <span class="chart-group__date">${item.date}</span>
       ${chartBar(item.a, "first")}${chartBar(item.b, "second")}
       <img class="chart-group__logo" src="${item.logo}" alt="">
     </div>`;
+  }
+
+  const matchCatalog = [
+    { status: "FINALIZADA", result: "WIN", date: "28 MAR · 12:20", event: "VPL · SEMANA 2", opponent: "GREEN OWLS", opponentTag: "UNB", logo: assets.greenOwls, score: "2 — 0", map: "HAVEN", selected: true },
+    { status: "FINALIZADA", result: "LOSS", date: "21 MAR · 19:00", event: "VPL · SEMANA 2", opponent: "AZURE BEARS", opponentTag: "AZR", logo: assets.azure, score: "0 — 2", map: "ASCENT" },
+    { status: "FINALIZADA", result: "WIN", date: "14 MAR · 18:30", event: "VPL · SEMANA 1", opponent: "CAAP HELLHOUNDS", opponentTag: "CAAP", logo: assets.caap, score: "2 — 1", map: "LOTUS" },
+    { status: "AGENDADA", result: "UPCOMING", date: "30 MAR · 13:00", event: "VPL · SEMANA 3", opponent: "CEUB OCTOPUS", opponentTag: "CEUB", logo: assets.ceub, score: "—", map: "A DEFINIR" }
+  ];
+
+  const homeScoreboard = [
+    { player: "caKo", agent: "Jett", icon: assets.agents.jett.icon, rating: "1.31", acs: 268, k: 22, d: 13, a: 5, diff: "+9", kast: "78%", hs: "31%", fk: 6, fd: 2 },
+    { player: "Psyder", agent: "Omen", icon: assets.agents.omen.icon, rating: "1.18", acs: 224, k: 18, d: 14, a: 11, diff: "+4", kast: "74%", hs: "24%", fk: 3, fd: 2 },
+    { player: "iSay", agent: "Killjoy", icon: assets.agents.killjoy.icon, rating: "1.12", acs: 208, k: 17, d: 13, a: 8, diff: "+4", kast: "81%", hs: "27%", fk: 2, fd: 1 },
+    { player: "Jhons", agent: "Sova", icon: assets.agents.sova.icon, rating: "1.04", acs: 191, k: 15, d: 14, a: 13, diff: "+1", kast: "76%", hs: "22%", fk: 1, fd: 2 },
+    { player: "Ethan", agent: "Viper", icon: assets.agents.viper.icon, rating: "0.98", acs: 176, k: 14, d: 15, a: 7, diff: "−1", kast: "71%", hs: "29%", fk: 1, fd: 3 }
+  ];
+
+  const opponentScoreboard = [
+    { player: "luk", agent: "Jett", icon: assets.agents.jett.icon, rating: "1.09", acs: 216, k: 17, d: 17, a: 4, diff: "0", kast: "70%", hs: "28%", fk: 4, fd: 3 },
+    { player: "koala", agent: "Omen", icon: assets.agents.omen.icon, rating: "0.97", acs: 188, k: 14, d: 16, a: 9, diff: "−2", kast: "68%", hs: "25%", fk: 2, fd: 3 },
+    { player: "nzt", agent: "Sova", icon: assets.agents.sova.icon, rating: "0.91", acs: 174, k: 13, d: 17, a: 10, diff: "−4", kast: "65%", hs: "20%", fk: 1, fd: 2 },
+    { player: "dalla", agent: "Killjoy", icon: assets.agents.killjoy.icon, rating: "0.86", acs: 162, k: 12, d: 17, a: 6, diff: "−5", kast: "63%", hs: "26%", fk: 2, fd: 3 },
+    { player: "brave", agent: "Viper", icon: assets.agents.viper.icon, rating: "0.79", acs: 149, k: 10, d: 19, a: 7, diff: "−9", kast: "59%", hs: "23%", fk: 1, fd: 3 }
+  ];
+
+  function matchCatalogCard(match) {
+    const resultClass = match.result === "WIN" ? " is-win" : match.result === "LOSS" ? " is-loss" : " is-upcoming";
+    return `<button class="match-catalog-card${match.selected ? " is-selected" : ""}" type="button" aria-label="${match.opponent}, ${match.status}">
+      <span class="match-catalog-card__top"><span>${match.date}</span><span>${match.event}</span></span>
+      <span class="match-catalog-card__body">
+        <span class="match-catalog-card__team"><img src="${assets.rushone}" alt=""><span><strong>RUSH ONE</strong><small>RSH</small></span></span>
+        <span class="match-catalog-card__score${resultClass}"><small>${match.result === "UPCOMING" ? match.status : match.result}</small><strong>${match.score}</strong></span>
+        <span class="match-catalog-card__team match-catalog-card__team--opponent"><img src="${match.logo}" alt=""><span><strong>${match.opponent}</strong><small>${match.opponentTag}</small></span></span>
+      </span>
+      <span class="match-catalog-card__bottom"><span>${match.map}</span><span>${match.status}</span></span>
+    </button>`;
+  }
+
+  function scoreboardRows(players) {
+    return players.map((player, index) => `<tr>
+      <td class="scoreboard-player"><span class="scoreboard-position">0${index + 1}</span><img src="${player.icon}" alt="${player.agent}"><span><strong>${player.player}</strong><small>${player.agent}</small></span></td>
+      <td class="is-emphasis">${player.rating}</td><td>${player.acs}</td><td>${player.k}</td><td>${player.d}</td><td>${player.a}</td><td class="${player.diff.startsWith("+") ? "is-positive" : player.diff.startsWith("−") ? "is-negative" : ""}">${player.diff}</td><td>${player.kast}</td><td>${player.hs}</td><td>${player.fk}</td><td>${player.fd}</td>
+    </tr>`).join("");
+  }
+
+  function scoreboardTable(team, tag, logo, score, side, players) {
+    return `<section class="scoreboard-team scoreboard-team--${side}" aria-labelledby="scoreboard-${side}">
+      <header class="scoreboard-team__header">
+        <div class="scoreboard-team__identity"><img src="${logo}" alt=""><span><small>${tag}</small><strong id="scoreboard-${side}">${team}</strong></span></div>
+        <div class="scoreboard-team__result"><span>${side === "home" ? "VITÓRIA" : "DERROTA"}</span><strong>${score}</strong></div>
+      </header>
+      <div class="scoreboard-table-scroll" tabindex="0" aria-label="Estatísticas de ${team}">
+        <table class="scoreboard-table">
+          <thead><tr><th>JOGADOR</th><th>RATING</th><th>ACS</th><th>K</th><th>D</th><th>A</th><th>+/−</th><th>KAST</th><th>HS%</th><th>FK</th><th>FD</th></tr></thead>
+          <tbody>${scoreboardRows(players)}</tbody>
+        </table>
+      </div>
+    </section>`;
+  }
+
+  function matchesScreen() {
+    return `<section class="matches-screen" data-screen="partidas">
+      <header class="dashboard-header">
+        <a class="dashboard-logo-slot" href="#dashboard" aria-label="Voltar para Meu Time"></a>
+        <div class="dashboard-header__spacer"></div>
+        ${globalNavigation("matches")}
+        <div class="dashboard-header__spacer"></div>
+      </header>
+      <main class="matches-page">
+        <header class="matches-page__heading">
+          <div><p class="page-eyebrow">COMPETITIVO · 2026</p><h1>PARTIDAS</h1><p>Consulte resultados, participantes e estatísticas registradas no scoreboard.</p></div>
+          <button class="matches-primary-action" type="button" data-demo-link><span aria-hidden="true">＋</span> NOVA PARTIDA</button>
+        </header>
+        <section class="matches-kpis" aria-label="Resumo das partidas">
+          <article><span>TOTAL DE PARTIDAS</span><strong>18</strong><small>Temporada 2026</small></article>
+          <article><span>VITÓRIAS</span><strong>12</strong><small class="is-positive">+3 nos últimos 30 dias</small></article>
+          <article><span>APROVEITAMENTO</span><strong>66.7%</strong><small>12W · 6L</small></article>
+          <article><span>SALDO DE ROUNDS</span><strong>+34</strong><small>238 ganhos · 204 perdidos</small></article>
+        </section>
+        <section class="matches-toolbar" aria-label="Filtros de partidas">
+          <label class="matches-search"><span aria-hidden="true">⌕</span><input type="search" placeholder="Buscar adversário ou evento" aria-label="Buscar adversário ou evento"></label>
+          <label class="matches-select"><span>STATUS</span><select aria-label="Status"><option>TODOS</option><option>FINALIZADA</option><option>AGENDADA</option></select></label>
+          <label class="matches-select"><span>EVENTO</span><select aria-label="Evento"><option>VPL 2026</option><option>TODOS</option></select></label>
+          <label class="matches-select"><span>FASE</span><select aria-label="Fase"><option>TODAS</option><option>GRUPOS</option><option>PLAYOFFS</option></select></label>
+        </section>
+        <div class="matches-layout">
+          <aside class="match-catalog" aria-label="Lista de partidas">
+            <div class="match-catalog__heading"><div><span>PARTIDAS</span><strong>18 registros</strong></div><button type="button" aria-label="Ordenar partidas" data-demo-link>↕</button></div>
+            <div class="match-catalog__list">${matchCatalog.map(matchCatalogCard).join("")}</div>
+            <button class="match-catalog__more" type="button" data-demo-link>CARREGAR MAIS</button>
+          </aside>
+          <article class="match-detail">
+            <header class="match-detail__hero">
+              <img class="match-detail__backdrop" src="${assets.haven}" alt="">
+              <div class="match-detail__meta"><span class="match-status-badge">FINALIZADA</span><span>VPL 2026 · FASE DE GRUPOS</span><span>28 MAR 2026 · 12:20</span></div>
+              <div class="match-versus">
+                <div class="match-versus__team"><img src="${assets.rushone}" alt="RUSH ONE"><strong>RUSH ONE</strong><span>RSH</span></div>
+                <div class="match-versus__score"><span>MD3 · FINAL</span><strong><em>2</em><i>:</i><em>0</em></strong><small>VITÓRIA</small></div>
+                <div class="match-versus__team"><img src="${assets.greenOwls}" alt="GREEN OWLS"><strong>GREEN OWLS</strong><span>UNB</span></div>
+              </div>
+              <div class="match-map-summary"><span><small>MAPA 1</small><strong>HAVEN</strong><em>13 — 8</em></span><span><small>MAPA 2</small><strong>ASCENT</strong><em>13 — 10</em></span><span class="is-disabled"><small>MAPA 3</small><strong>LOTUS</strong><em>—</em></span></div>
+            </header>
+            <nav class="match-detail__tabs" aria-label="Detalhes da partida"><button class="is-active" type="button">SCOREBOARD</button><button type="button" data-demo-link>VISÃO GERAL</button><button type="button" data-demo-link>GRAVAÇÕES <span>5</span></button></nav>
+            <div class="scoreboards">
+              <div class="scoreboard-legend"><span>PLACAR FINAL E ESTATÍSTICAS INDIVIDUAIS</span><span><abbr title="Average Combat Score">ACS</abbr> · <abbr title="Kill, Assist, Survived, Traded">KAST</abbr> · <abbr title="First Kill">FK</abbr> · <abbr title="First Death">FD</abbr></span></div>
+              ${scoreboardTable("RUSH ONE", "RSH", assets.rushone, "43", "home", homeScoreboard)}
+              ${scoreboardTable("GREEN OWLS", "UNB", assets.greenOwls, "35", "away", opponentScoreboard)}
+            </div>
+          </article>
+        </div>
+      </main>
+    </section>`;
+  }
+
+  const rosterPlayers = [
+    { name: "Psyder", fullName: "Pedro 'Psyder' Almeida", role: "CONTROLADOR", portrait: assets.agents.omen.portrait, icon: assets.agents.omen.icon, agent: "Omen", rating: "1.18", selected: true },
+    { name: "caKo", fullName: "Carlos 'caKo' Silva", role: "DUELISTA", portrait: assets.agents.jett.portrait, icon: assets.agents.jett.icon, agent: "Jett", rating: "1.31" },
+    { name: "Jhons", fullName: "João 'Jhons' Souza", role: "INICIADOR", portrait: assets.agents.sova.portrait, icon: assets.agents.sova.icon, agent: "Sova", rating: "1.04" },
+    { name: "iSay", fullName: "Isaias 'iSay' Santos", role: "SENTINELA", portrait: assets.agents.killjoy.portrait, icon: assets.agents.killjoy.icon, agent: "Killjoy", rating: "1.12" },
+    { name: "Ethan", fullName: "Ethan Oliveira", role: "CONTROLADOR", portrait: assets.agents.viper.portrait, icon: assets.agents.viper.icon, agent: "Viper", rating: "0.98" }
+  ];
+
+  const playerMatchHistory = [
+    { date: "28 MAR", opponent: "GREEN OWLS", logo: assets.greenOwls, result: "WIN", score: "2 — 0", agent: assets.agents.omen.icon, rating: "1.18", acs: 224, kd: "18 / 14", diff: "+4" },
+    { date: "21 MAR", opponent: "AZURE BEARS", logo: assets.azure, result: "LOSS", score: "0 — 2", agent: assets.agents.omen.icon, rating: "0.94", acs: 187, kd: "14 / 17", diff: "−3" },
+    { date: "14 MAR", opponent: "CAAP HELLHOUNDS", logo: assets.caap, result: "WIN", score: "2 — 1", agent: assets.agents.viper.icon, rating: "1.24", acs: 236, kd: "21 / 15", diff: "+6" },
+    { date: "07 MAR", opponent: "A2E UFF", logo: assets.a2e, result: "WIN", score: "2 — 0", agent: assets.agents.omen.icon, rating: "1.15", acs: 218, kd: "17 / 13", diff: "+4" },
+    { date: "28 FEV", opponent: "UFU SAINTS", logo: assets.ufu, result: "WIN", score: "2 — 0", agent: assets.agents.viper.icon, rating: "1.09", acs: 203, kd: "16 / 14", diff: "+2" }
+  ];
+
+  function rosterItem(player, index) {
+    return `<button class="roster-item${player.selected ? " is-selected" : ""}" type="button" aria-label="${player.fullName}, ${player.role}">
+      <span class="roster-item__number">0${index + 1}</span>
+      <span class="roster-item__avatar"><img src="${player.portrait}" alt=""></span>
+      <span class="roster-item__copy"><strong>${player.name}</strong><small>${player.role}</small></span>
+      <span class="roster-item__rating"><small>RATING</small><strong>${player.rating}</strong></span>
+      <span class="roster-item__status" aria-label="Ativo"></span>
+    </button>`;
+  }
+
+  function playerHistoryRows() {
+    return playerMatchHistory.map((match) => `<tr>
+      <td><span class="history-date">${match.date}<small>2026</small></span></td>
+      <td><span class="history-opponent"><img src="${match.logo}" alt=""><strong>${match.opponent}</strong></span></td>
+      <td><span class="history-result ${match.result === "WIN" ? "is-win" : "is-loss"}">${match.result}<small>${match.score}</small></span></td>
+      <td><img class="history-agent" src="${match.agent}" alt="Agente utilizado"></td>
+      <td class="is-emphasis">${match.rating}</td><td>${match.acs}</td><td>${match.kd}</td><td class="${match.diff.startsWith("+") ? "is-positive" : "is-negative"}">${match.diff}</td>
+    </tr>`).join("");
+  }
+
+  function playersScreen() {
+    return `<section class="players-screen" data-screen="jogadores">
+      <header class="dashboard-header">
+        <a class="dashboard-logo-slot" href="#dashboard" aria-label="Voltar para Meu Time"></a>
+        <div class="dashboard-header__spacer"></div>
+        ${globalNavigation("team")}
+        <div class="dashboard-header__spacer"></div>
+      </header>
+      <main class="players-page">
+        <div class="players-page__navigation">
+          ${teamSummary()}
+          <div class="content-tabs players-section-bar">
+            ${teamSectionNavigation("players")}
+            <div class="filters">
+              <label class="filter filter--year"><span>ANO</span><select aria-label="Ano"><option>2026</option><option>2025</option></select></label>
+              <label class="filter filter--event"><span>FUNÇÃO</span><select aria-label="Função"><option>ALL</option><option>CONTROLADOR</option><option>DUELISTA</option></select></label>
+              <label class="filter filter--phase"><span>STATUS</span><select aria-label="Status"><option>ATIVOS</option><option>TODOS</option></select></label>
+            </div>
+          </div>
+        </div>
+        <div class="players-layout">
+          <aside class="roster-panel" aria-label="Elenco da equipe">
+            <header class="roster-panel__heading"><div><span>ELENCO ATIVO</span><strong>5 / 5 JOGADORES</strong></div><button type="button" aria-label="Adicionar jogador" data-demo-link>＋</button></header>
+            <div class="roster-list">${rosterPlayers.map(rosterItem).join("")}</div>
+            <div class="roster-panel__footer"><span><i></i> ATIVO</span><span>ATUALIZADO HOJE</span></div>
+          </aside>
+          <div class="individual-column">
+            <section class="individual-hero">
+              <div class="individual-hero__backdrop" aria-hidden="true"></div>
+              <img class="individual-hero__portrait" src="${assets.agents.omen.portrait}" alt="Omen, agente principal de Psyder">
+              <div class="individual-hero__identity">
+                <div class="individual-hero__status"><span></span> JOGADOR ATIVO</div>
+                <p>CONTROLADOR · RSH</p>
+                <h1>PSYDER</h1>
+                <span class="individual-hero__name">Pedro Almeida · Brasil</span>
+                <div class="individual-hero__tags"><span>MAIN OMEN</span><span>FLEX VIPER</span></div>
+              </div>
+              <button class="individual-hero__edit" type="button" data-demo-link>EDITAR PERFIL</button>
+            </section>
+            <section class="individual-kpis" aria-label="Indicadores individuais">
+              <article><span>RATING</span><strong>1.18</strong><small class="is-positive">▲ 0.06</small></article>
+              <article><span>ACS MÉDIO</span><strong>224</strong><small>TOP 24%</small></article>
+              <article><span>K / D</span><strong>1.28</strong><small>86 / 67</small></article>
+              <article><span>KAST</span><strong>74%</strong><small class="is-positive">+3.2%</small></article>
+            </section>
+            <section class="individual-performance-card">
+              <header class="component-heading"><div><span>EVOLUÇÃO DE PERFORMANCE</span><small>RATING · ÚLTIMAS 8 PARTIDAS</small></div><div class="performance-average"><small>MÉDIA</small><strong>1.18</strong></div></header>
+              <div class="individual-trend" role="img" aria-label="Evolução do rating nas últimas oito partidas">
+                <div class="individual-trend__scale"><span>1.40</span><span>1.20</span><span>1.00</span><span>0.80</span></div>
+                <div class="individual-trend__grid"><span></span><span></span><span></span><span></span></div>
+                <div class="individual-trend__bars">
+                  ${[104, 92, 112, 121, 98, 116, 108, 128].map((value, index) => `<span style="--trend-height:${Math.max(28, (value - 70) * 2)}px"><i>${(value / 100).toFixed(2)}</i><small>${["02/07", "02/14", "02/21", "02/28", "03/07", "03/14", "03/21", "03/28"][index]}</small></span>`).join("")}
+                </div>
+                <div class="individual-trend__average"><span>AVG 1.18</span></div>
+              </div>
+            </section>
+            <section class="player-history-card">
+              <header class="component-heading"><div><span>HISTÓRICO INDIVIDUAL</span><small>DESEMPENHO POR PARTIDA</small></div><button type="button" data-demo-link>VER TODAS</button></header>
+              <div class="player-history-scroll" tabindex="0">
+                <table class="player-history-table"><thead><tr><th>DATA</th><th>ADVERSÁRIO</th><th>RESULTADO</th><th>AGENTE</th><th>RATING</th><th>ACS</th><th>K / D</th><th>+/−</th></tr></thead><tbody>${playerHistoryRows()}</tbody></table>
+              </div>
+            </section>
+          </div>
+          <aside class="player-insights" aria-label="Contexto de desempenho">
+            <section class="last-performance-card">
+              <header class="insight-heading"><div><span>ÚLTIMA PARTIDA</span><small>28 MAR · VPL 2026</small></div><a href="#partidas">VER PARTIDA</a></header>
+              <div class="last-performance-card__match">
+                <img src="${assets.haven}" alt="Mapa Haven">
+                <div class="last-performance-card__versus"><span><img src="${assets.rushone}" alt=""><small>RSH</small></span><strong><em>2</em> — 0<small>WIN</small></strong><span><img src="${assets.greenOwls}" alt=""><small>UNB</small></span></div>
+                <p>HAVEN · MD3 · FINALIZADA</p>
+              </div>
+              <div class="last-performance-card__stats"><span><small>RATING</small><strong>1.18</strong></span><span><small>ACS</small><strong>224</strong></span><span><small>K / D / A</small><strong>18 / 14 / 11</strong></span></div>
+              <div class="performance-callout"><span>DESTAQUE</span><p>Melhor desempenho em assistências da equipe nesta partida.</p></div>
+            </section>
+            <section class="agent-pool-card">
+              <header class="insight-heading"><div><span>POOL DE AGENTES</span><small>TEMPORADA 2026</small></div></header>
+              <div class="agent-usage"><img src="${assets.agents.omen.icon}" alt="Omen"><div><span><strong>OMEN</strong><small>12 PARTIDAS</small></span><i><b style="width:72%"></b></i></div><em>72%</em></div>
+              <div class="agent-usage"><img src="${assets.agents.viper.icon}" alt="Viper"><div><span><strong>VIPER</strong><small>5 PARTIDAS</small></span><i><b style="width:23%"></b></i></div><em>23%</em></div>
+              <div class="agent-usage"><img src="${assets.agents.killjoy.icon}" alt="Killjoy"><div><span><strong>KILLJOY</strong><small>1 PARTIDA</small></span><i><b style="width:5%"></b></i></div><em>5%</em></div>
+            </section>
+            <section class="season-summary-card">
+              <header class="insight-heading"><div><span>RESUMO DA TEMPORADA</span><small>18 PARTIDAS JOGADAS</small></div></header>
+              <dl><div><dt>Rounds jogados</dt><dd>428</dd></div><div><dt>Abates</dt><dd>312</dd></div><div><dt>Assistências</dt><dd>184</dd></div><div><dt>First Kills</dt><dd>42</dd></div></dl>
+            </section>
+          </aside>
+        </div>
+      </main>
+    </section>`;
   }
 
   function dashboardScreen() {
@@ -324,9 +599,7 @@
         <header class="dashboard-header">
           <div class="dashboard-logo-slot" aria-label="Área reservada para o logo"></div>
           <div class="dashboard-header__spacer"></div>
-          <nav class="global-nav" aria-label="Navegação principal">
-            ${["Meu Time", "Partidas", "Revisões"].map((label, index) => `<button class="global-nav__item${index === 0 ? " is-active" : ""}" type="button" data-nav-tab>${label}</button>`).join("")}
-          </nav>
+          ${globalNavigation("team")}
           <div class="dashboard-header__spacer"></div>
         </header>
         <div class="dashboard-workspace">
@@ -356,19 +629,9 @@
           </aside>
           <main class="dashboard-main">
             <div>
-              <section class="team-summary" aria-label="Resumo da equipe">
-                <div class="team-summary__identity">
-                  <img class="team-summary__logo" src="${assets.rushone}" alt="Logo RUSH ONE">
-                  <h1 class="team-summary__name">RUSH ONE</h1>
-                  <div class="team-summary__meta"><span>RSH</span><span>·</span><img src="${assets.brazil}" alt="Brasil"><span>· 2W 1L · 33.85% WR</span></div>
-                </div>
-                <p class="team-summary__metric">43%</p>
-                <dl class="team-summary__facts"><dt>Ranking:</dt><dd>#1</dd><dt>Info 2:</dt><dd>--</dd><dt>Info 3:</dt><dd>--</dd></dl>
-              </section>
+              ${teamSummary()}
               <div class="content-tabs">
-                <nav class="content-tabs__nav" aria-label="Seções da equipe">
-                  ${["Visão Geral", "Histórico", "Players", "Métricas"].map((label, index) => `<button class="content-tab${index === 0 ? " is-active" : ""}" type="button" data-content-tab>${label}</button>`).join("")}
-                </nav>
+                ${teamSectionNavigation("overview")}
                 <div class="filters">
                   <label class="filter filter--year"><span>ANO</span><select aria-label="Ano"><option>2026</option><option>2025</option></select></label>
                   <label class="filter filter--event"><span>EVENTO</span><select aria-label="Evento"><option>ALL</option><option>VPL</option></select></label>
@@ -467,11 +730,14 @@
       login: loginScreen,
       cadastro: registerScreen,
       equipe: teamScreen,
-      dashboard: dashboardScreen
+      dashboard: dashboardScreen,
+      partidas: matchesScreen,
+      jogadores: playersScreen
     };
 
     app.innerHTML = screens[route]();
-    document.title = route === "dashboard" ? "RUSH ONE — Dashboard" : "RUSH ONE — Terminal";
+    const titles = { dashboard: "RUSH ONE — Dashboard", partidas: "RUSH ONE — Partidas", jogadores: "RUSH ONE — Jogadores" };
+    document.title = titles[route] || "RUSH ONE — Terminal";
     bindCommonInteractions();
   }
 
