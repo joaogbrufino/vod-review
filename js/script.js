@@ -4,7 +4,6 @@
   const app = document.querySelector("#app");
 
   const assets = {
-    loginBackground: "assets/auth-login-bg.png",
     teamBackground: "assets/auth-team-bg.png",
     brandLogo: "assets/vod-review-logo.png",
     eye: "assets/eye.svg",
@@ -42,8 +41,19 @@
 
   const routes = new Set([
     "login", "equipe", "dashboard", "partidas", "jogadores", "usuarios",
-    "revisoes", "gravacoes", "sincronizacao", "revisao", "sintese"
+    "revisoes", "gravacoes", "sincronizacao", "revisao", "sintese", "nova-partida", "scoreboard", "rastreabilidade", "perfil-equipe"
   ]);
+
+  // Estado exclusivamente visual: é descartado ao atualizar a página.
+  const prototypeState = {
+    matchStep: 1,
+    participants: new Set(["Psyder", "caKo", "Jhons"]),
+    recordingMode: "multi",
+    syncState: "pending",
+    scoreboardState: "incomplete",
+    reviewReady: false,
+    synthesisVersions: 0
+  };
 
   function getRoute() {
     const route = window.location.hash.replace(/^#\/?/, "").split("?")[0];
@@ -108,31 +118,28 @@
   function authShell(options) {
     const isLogin = options.kind === "login";
     return `
-      <section class="auth-screen" data-screen="${options.kind}">
-        <aside class="auth-branding" style="--auth-background: url('../${options.background}')" aria-label="Identidade visual ${isLogin ? "da plataforma VOD Review" : "da equipe"}">
-          ${isLogin ? "" : `<div class="brand-heading">
+      <section class="auth-screen${isLogin ? " auth-screen--centered" : ""}" data-screen="${options.kind}">
+        ${isLogin ? "" : `<aside class="auth-branding" style="--auth-background: url('../${options.background}')" aria-label="Identidade visual da equipe">
+          <div class="brand-heading">
             <p class="brand-mark brand-mark--large">LOGO DA EQUIPE</p>
             <span class="brand-heading__rule" aria-hidden="true"></span>
-          </div>`}
+          </div>
           <p class="brand-footer">
-            <span class="brand-footer__identity">© 2026 ${isLogin ? `<img src="${assets.brandLogo}" alt="VOD Review">` : "RUSH ONE ESPORTS"}</span>
+            <span class="brand-footer__identity">© 2026 RUSH ONE ESPORTS</span>
             <span>1.0.0 RELEASE</span>
           </p>
-        </aside>
+        </aside>`}
         <div class="auth-panel">
-          <div class="step-indicator" aria-hidden="true"><span></span><span></span><span></span></div>
+          ${isLogin ? "" : `<div class="step-indicator" aria-hidden="true"><span></span><span></span><span></span></div>`}
           ${options.content}
-          <div class="auth-panel__bottom-space${isLogin ? "" : " auth-panel__bottom-space--line"}" aria-hidden="true"></div>
+          ${isLogin ? "" : `<div class="auth-panel__bottom-space auth-panel__bottom-space--line" aria-hidden="true"></div>`}
         </div>
       </section>`;
   }
 
   function loginScreen() {
-    const profile = getProfileFromUrl();
-    const isAdmin = profile === "admin";
     return authShell({
       kind: "login",
-      background: assets.loginBackground,
       content: `
         <form class="auth-card" data-form="login">
           <header class="auth-title-group">
@@ -141,24 +148,31 @@
             <p class="auth-description">Entre com suas credenciais para acessar a plataforma.</p>
           </header>
           <div class="form-stack">
-            <div class="field">
+            <div class="field field--invalid">
               <label for="login-user">E-MAIL OU USUÁRIO</label>
-              <div class="input-shell"><input id="login-user" name="user" type="text" value="${isAdmin ? "admin@vodreview.gg" : "treinador@vodreview.gg"}" autocomplete="username"></div>
+              <div class="input-shell"><input id="login-user" name="user" type="text" value="" autocomplete="username" aria-invalid="true" aria-describedby="login-user-error"></div>
+              <p class="field-error" id="login-user-error">E-mail ou usuário é obrigatório</p>
             </div>
-            <div class="field">
+            <div class="field field--invalid">
               <div class="field__head">
                 <label for="login-password">SENHA DE ACESSO</label>
               </div>
               <div class="input-shell">
-                <input id="login-password" name="password" type="password" value="vodreview-demo" autocomplete="current-password">
-                <button class="password-toggle" type="button" data-password-toggle aria-label="Mostrar senha"><img src="${assets.eye}" alt=""></button>
+                <input id="login-password" name="password" type="text" value="vodreview-demo" autocomplete="current-password" aria-invalid="true" aria-describedby="login-password-error">
+                <button class="password-toggle is-active" type="button" data-password-toggle aria-label="Ocultar senha" aria-pressed="true"><img src="${assets.eye}" alt=""></button>
               </div>
+              <p class="field-error" id="login-password-error">Senha é obrigatória</p>
             </div>
           </div>
           <div class="actions">
             <button class="primary-button" type="submit">ENTRAR NO TERMINAL</button>
           </div>
-        </form>`
+        </form>
+        <div class="login-toast-region" aria-label="Notificações de autenticação" aria-live="polite">
+          <div class="login-toast login-toast--error" role="alert"><i data-lucide="circle-alert" aria-hidden="true"></i><span>E-mail, nome de usuário ou senha inválidos</span></div>
+          <div class="login-toast login-toast--error" role="alert"><i data-lucide="user-x" aria-hidden="true"></i><span>Sua conta está inativa</span></div>
+          <div class="login-toast login-toast--warning" role="alert"><i data-lucide="clock-3" aria-hidden="true"></i><span>Sua sessão expirou. Entre novamente</span></div>
+        </div>`
     });
   }
 
@@ -390,6 +404,7 @@
         <div class="matches-page">
         <section class="matches-toolbar" aria-label="Pesquisa de partidas">
           <label class="matches-search"><span aria-hidden="true">⌕</span><input type="search" placeholder="Buscar adversário ou evento" aria-label="Buscar adversário ou evento"></label>
+          <button class="module-primary" type="button" data-route="nova-partida">NOVA PARTIDA</button>
         </section>
         <div class="matches-layout">
           <aside class="match-catalog" aria-label="Lista de partidas" data-match-catalog>
@@ -409,11 +424,12 @@
               </div>
               <div class="match-map-summary"><span><small>MAPA 1</small><strong>HAVEN</strong><em>13 — 8</em></span><span><small>MAPA 2</small><strong>ASCENT</strong><em>13 — 10</em></span><span class="is-disabled"><small>MAPA 3</small><strong>LOTUS</strong><em>—</em></span></div>
             </header>
-            <nav class="match-detail__tabs" aria-label="Detalhes da partida"><button class="is-active" type="button">SCOREBOARD</button><button type="button" data-route="gravacoes">GRAVAÇÕES <span>5</span></button></nav>
+            <nav class="match-detail__tabs" aria-label="Detalhes da partida"><button class="is-active" type="button" data-route="scoreboard">SCOREBOARD</button><button type="button" data-route="gravacoes">GRAVAÇÕES <span>5</span></button><button type="button" data-route="revisoes">SESSÃO <span>1</span></button></nav>
             <div class="scoreboards">
               <div class="scoreboard-legend"><span>PLACAR FINAL E ESTATÍSTICAS INDIVIDUAIS</span><span><abbr title="Average Combat Score">ACS</abbr> · <abbr title="Kill, Assist, Survived, Traded">KAST</abbr> · <abbr title="First Kill">FK</abbr> · <abbr title="First Death">FD</abbr></span></div>
               ${scoreboardTable("RUSH ONE", "RSH", assets.rushone, "43", "home", homeScoreboard)}
               ${scoreboardTable("GREEN OWLS", "UNB", assets.greenOwls, "35", "away", opponentScoreboard)}
+              <footer class="match-detail__actions"><button class="module-secondary" type="button" data-route="scoreboard">EDITAR SCOREBOARD</button><button class="module-secondary" type="button" data-route="revisao">CONTINUAR REVISÃO</button><button class="module-danger" type="button" data-proto-action="open-delete-match">EXCLUIR PARTIDA</button></footer>
             </div>
           </article>
         </div>
@@ -427,6 +443,7 @@
         </main>
         ${reviewPanel()}
       </div>
+      <dialog class="module-dialog confirm-dialog" data-delete-match-dialog><form method="dialog"><header><div><span class="module-label">EXCLUSÃO DEFINITIVA</span><h2>Excluir RUSH ONE × GREEN OWLS?</h2></div><button type="button" data-proto-action="close-delete-match" aria-label="Fechar">×</button></header><div class="dialog-fields"><p>Esta ação é representada somente para demonstração. O produto real excluiria permanentemente:</p><ul class="cascade-list"><li>scoreboard e estatísticas individuais</li><li>gravações e sessão de revisão</li><li>anotações e versões de síntese</li></ul><p class="module-notice"><strong>RN033 · RN034:</strong> os indicadores de equipe e jogadores serão atualizados desconsiderando esta partida.</p></div><footer><button class="module-secondary" type="button" data-proto-action="close-delete-match">CANCELAR</button><button class="module-danger" type="button" data-proto-action="confirm-delete-match">EXCLUIR E ATUALIZAR INDICADORES</button></footer></form></dialog>
       <div class="app-toast" role="status" aria-live="polite" data-toast></div>
     </section>`;
   }
@@ -492,6 +509,7 @@
       <div class="content-tabs players-section-bar">
         ${teamSectionNavigation(activeSection)}
       </div>
+      <button class="team-profile-action" type="button" data-route="perfil-equipe">EDITAR EQUIPE</button>
     </div>`;
   }
 
@@ -524,7 +542,7 @@
 
   function reviewPanel() {
     return `<aside class="agent-panel" aria-label="Painel de revisão">
-      <button class="new-match-button" type="button" data-route="partidas">+ NOVA PARTIDA</button>
+      <button class="new-match-button" type="button" data-route="partidas">NOVA PARTIDA</button>
       <section class="review-card">
         <h2 class="review-card__title">REVISÃO EM ANDAMENTO</h2>
         <div class="review-match">
@@ -584,7 +602,7 @@
       mainClass: "dashboard-main--players",
       content: `<div class="players-layout">
           <aside class="roster-panel" aria-label="Elenco da equipe">
-            <header class="roster-panel__heading"><div><span>ELENCO ATIVO</span><strong>5 JOGADORES</strong></div><button type="button" aria-label="Adicionar jogador" data-demo-link>＋</button></header>
+            <header class="roster-panel__heading"><div><span>ELENCO ATIVO</span><strong>5 JOGADORES</strong></div><button type="button" aria-label="Adicionar jogador" data-proto-action="open-player-dialog"></button></header>
             <div class="roster-list">${rosterPlayers.map(rosterItem).join("")}</div>
             <div class="roster-panel__footer"><span><i></i> ATIVO</span><span>ATUALIZADO HOJE</span></div>
           </aside>
@@ -599,7 +617,7 @@
                 <span class="individual-hero__name">Pedro Almeida · Brasil</span>
                 <div class="individual-hero__tags"><span>MAIN OMEN</span><span>FLEX VIPER</span></div>
               </div>
-              <button class="individual-hero__edit" type="button" data-demo-link>EDITAR PERFIL</button>
+              <button class="individual-hero__edit" type="button" data-proto-action="open-player-dialog">EDITAR PERFIL</button>
             </section>
             <section class="individual-kpis" aria-label="Indicadores individuais">
               <article><span>RATING</span><strong>1.18</strong><small class="is-positive">▲ 0.06</small></article>
@@ -647,7 +665,9 @@
               <dl><div><dt>Rounds jogados</dt><dd>428</dd></div><div><dt>Abates</dt><dd>312</dd></div><div><dt>Assistências</dt><dd>184</dd></div><div><dt>First Kills</dt><dd>42</dd></div></dl>
             </section>
           </aside>
-        </div>`
+        </div>
+        <section class="prototype-inline-notice"><strong>GESTÃO DO ELENCO</strong><span>Use “+” ou “Editar perfil” para visualizar os estados de criar, alterar e remover jogador. O limite de cinco se aplica somente aos participantes da partida.</span></section>
+        <dialog class="module-dialog" data-player-dialog><form method="dialog"><header><div><span class="module-label">JOGADOR DA EQUIPE</span><h2>EDITAR JOGADOR</h2></div><button type="button" data-proto-action="close-player-dialog" aria-label="Fechar">×</button></header><div class="dialog-fields"><label><span>NOME DE JOGO</span><input value="Psyder"></label><label><span>NOME COMPLETO</span><input value="Pedro Almeida"></label><label><span>FUNÇÃO</span><select><option>CONTROLADOR</option><option>DUELISTA</option><option>INICIADOR</option><option>SENTINELA</option></select></label><p class="module-notice"><strong>RF004:</strong> campos e ações são cenários visuais, sem alteração permanente do elenco.</p></div><footer><button class="module-danger" type="button" data-proto-action="remove-player">REMOVER</button><button class="module-primary" type="button" data-proto-action="save-player">SALVAR ALTERAÇÕES</button></footer></form></dialog>`
     });
   }
 
@@ -696,10 +716,7 @@
         ${matchSidebar()}
         <main class="dashboard-main dashboard-main--module">
         <div class="module-page">
-        ${showHeading ? `<header class="module-heading">
-          <div><p class="page-eyebrow">${eyebrow}</p><h1>${title}</h1><p>${description}</p></div>
-          ${actions ? `<div class="module-heading__actions">${actions}</div>` : ""}
-        </header>` : ""}
+        ${showHeading && actions ? `<div class="module-actionbar" aria-label="Ações da página">${actions}</div>` : ""}
         ${content}
         </div>
       </main>
@@ -713,14 +730,8 @@
     return `<section class="dashboard-screen module-screen admin-screen" data-screen="usuarios">
       ${dashboardHeader("users", "admin")}
       <main class="admin-page">
-        <header class="admin-hero">
-          <div class="admin-hero__content">
-            <p class="page-eyebrow">ADMINISTRAÇÃO · ACESSOS E EQUIPES</p>
-            <h1>${title}</h1>
-            <p>${description}</p>
-            <div class="admin-hero__actions">${actions}</div>
-          </div>
-        </header>
+        ${actions ? `<div class="module-actionbar" aria-label="Ações administrativas">${actions}</div>` : ""}
+        <p class="admin-scope-notice"><strong>ESCOPO DO ADMINISTRADOR</strong><span>Cadastro de equipes e contas de treinadores. Painéis, partidas, estatísticas e revisões permanecem restritos aos treinadores responsáveis.</span></p>
         ${content}
       </main>
       <div class="app-toast" role="status" aria-live="polite" data-toast></div>
@@ -752,27 +763,19 @@
 
   function usersScreen() {
     return adminShell({
-      title: "CADASTRAR USUÁRIO/EQUIPE",
-      description: "Organize as equipes da plataforma e controle as contas dos treinadores vinculados.",
-      actions: '<button class="module-secondary" type="button" data-open-team-dialog><span aria-hidden="true">＋</span> NOVA EQUIPE</button><button class="module-primary" type="button" data-open-user-dialog><span aria-hidden="true">＋</span> NOVO TREINADOR</button>',
-      content: `<section class="admin-workspace" aria-labelledby="admin-workspace-title">
-          <header class="admin-workspace__header">
-            <div><span class="module-label">GERENCIAMENTO</span><h2 id="admin-workspace-title">Cadastros da plataforma</h2><p>Selecione uma categoria para consultar e atualizar os dados.</p></div>
-            <div class="admin-tabs" role="tablist" aria-label="Categorias administrativas">
-              <button class="is-active" type="button" role="tab" aria-selected="true" aria-controls="admin-teams-panel" data-admin-tab="teams">EQUIPES <span data-team-total>3</span></button>
-              <button type="button" role="tab" aria-selected="false" aria-controls="admin-users-panel" data-admin-tab="users">TREINADORES <span data-user-total>3</span></button>
-            </div>
-          </header>
-          <section class="admin-management-panel" id="admin-teams-panel" role="tabpanel" data-admin-panel="teams">
-            <div class="module-toolbar"><div><span class="module-label">EQUIPES CADASTRADAS</span><small>Informações cadastrais e treinador responsável</small></div><button class="admin-inline-action" type="button" data-open-team-dialog><span aria-hidden="true">＋</span> Adicionar equipe</button></div>
-            <div class="module-table-scroll"><table class="module-table"><thead><tr><th>EQUIPE</th><th>REGIÃO</th><th>TREINADOR</th><th>STATUS</th><th>AÇÕES</th></tr></thead><tbody data-teams-body>${teamRows()}</tbody></table></div>
-          </section>
-          <section class="admin-management-panel" id="admin-users-panel" role="tabpanel" data-admin-panel="users" hidden>
-            <div class="module-toolbar"><div><span class="module-label">CONTAS DE TREINADORES</span><small>Contas e equipes vinculadas</small></div><div class="admin-toolbar-actions"><label class="module-search"><span aria-hidden="true">⌕</span><input type="search" placeholder="Buscar treinador ou equipe" aria-label="Buscar treinador"></label><button class="admin-inline-action" type="button" data-open-user-dialog><span aria-hidden="true">＋</span> Adicionar treinador</button></div></div>
-            <div class="module-table-scroll"><table class="module-table"><thead><tr><th>TREINADOR</th><th>EQUIPE VINCULADA</th><th>STATUS</th><th>ÚLTIMO ACESSO</th><th>AÇÕES</th></tr></thead><tbody data-users-body>${userRows()}</tbody></table></div>
-          </section>
+      title: "GESTÃO ADMINISTRATIVA",
+      description: "Cadastre equipes e gerencie somente as contas dos treinadores vinculados a elas.",
+      actions: '<button class="module-secondary" type="button" data-open-team-dialog>NOVA EQUIPE</button><button class="module-primary" type="button" data-open-user-dialog>NOVO TREINADOR</button>',
+      content: `<section class="module-stats" aria-label="Resumo administrativo"><article><span>EQUIPES CADASTRADAS</span><strong data-team-total>3</strong><small>Ativas e cadastros pendentes</small></article><article><span>TREINADORES</span><strong data-user-total>3</strong><small>Contas vinculadas a equipes</small></article><article><span>ACESSOS ATIVOS</span><strong data-user-active>2</strong><small data-user-active-detail>67% dos treinadores</small></article></section>
+        <section class="module-card admin-management-card">
+          <div class="module-toolbar"><div><span class="module-label">EQUIPES CADASTRADAS</span><small>Informações cadastrais e treinador responsável</small></div></div>
+          <div class="module-table-scroll"><table class="module-table"><thead><tr><th>EQUIPE</th><th>REGIÃO</th><th>TREINADOR</th><th>STATUS</th><th>AÇÕES</th></tr></thead><tbody data-teams-body>${teamRows()}</tbody></table></div>
         </section>
-        <dialog class="module-dialog" data-team-dialog><form method="dialog" data-team-form><header><div><span class="module-label">CADASTRO ADMINISTRATIVO</span><h2 data-team-dialog-title>NOVA EQUIPE</h2></div><button type="button" data-close-team-dialog aria-label="Fechar">×</button></header><div class="dialog-fields"><label><span>NOME DA EQUIPE</span><input name="name" required placeholder="Nome da equipe"></label><label><span>TAG / SIGLA</span><input name="tag" required maxlength="4" placeholder="TAG"></label><label><span>REGIÃO / PAÍS</span><select name="region"><option>BRASIL</option><option>AMÉRICA DO SUL</option><option>AMÉRICA DO NORTE</option><option>EUROPA</option></select></label><p class="module-notice"><strong>Próxima etapa:</strong> após salvar a equipe, crie a conta do treinador e selecione esta equipe para concluir o vínculo.</p></div><footer><button class="module-secondary" type="button" data-close-team-dialog>CANCELAR</button><button class="module-primary" type="submit">SALVAR EQUIPE</button></footer></form></dialog>
+        <section class="module-card admin-management-card">
+          <div class="module-toolbar"><div><span class="module-label">CONTAS DE TREINADORES</span><small>O administrador não possui acesso aos dados competitivos destas equipes</small></div><label class="module-search"><span aria-hidden="true">⌕</span><input type="search" placeholder="Buscar treinador ou equipe" aria-label="Buscar treinador"></label></div>
+          <div class="module-table-scroll"><table class="module-table"><thead><tr><th>TREINADOR</th><th>EQUIPE VINCULADA</th><th>STATUS</th><th>ÚLTIMO ACESSO</th><th>AÇÕES</th></tr></thead><tbody data-users-body>${userRows()}</tbody></table></div>
+        </section>
+        <dialog class="module-dialog" data-team-dialog><form method="dialog" data-team-form><header><div><span class="module-label">CADASTRO ADMINISTRATIVO</span><h2 data-team-dialog-title>NOVA EQUIPE</h2></div><button type="button" data-close-team-dialog aria-label="Fechar">×</button></header><div class="dialog-fields"><label><span>NOME DA EQUIPE</span><input name="name" required placeholder="Nome da equipe"></label><label><span>TAG / SIGLA</span><input name="tag" required maxlength="4" placeholder="TAG"></label><label><span>REGIÃO / PAÍS</span><select name="region"><option>BRASIL</option><option>AMÉRICA DO SUL</option><option>AMÉRICA DO NORTE</option><option>EUROPA</option></select></label><label><span>TREINADOR RESPONSÁVEL</span><select name="coach" required>${systemUsers.map((user) => `<option>${user.name}</option>`).join("")}</select></label><p class="module-notice"><strong>RN001:</strong> a equipe só é apresentada como ativa após indicar um treinador responsável.</p></div><footer><button class="module-secondary" type="button" data-close-team-dialog>CANCELAR</button><button class="module-primary" type="submit">SALVAR EQUIPE VINCULADA</button></footer></form></dialog>
         <dialog class="module-dialog" data-user-dialog><form method="dialog" data-user-form><header><div><span class="module-label">CONTA DE TREINADOR</span><h2 data-user-dialog-title>NOVO TREINADOR</h2></div><button type="button" data-close-user-dialog aria-label="Fechar">×</button></header><div class="dialog-fields"><label><span>NOME COMPLETO</span><input name="name" required placeholder="Nome do treinador"></label><label><span>E-MAIL</span><input name="email" type="email" required placeholder="treinador@equipe.gg"></label><label><span>EQUIPE VINCULADA</span><select name="team">${managedTeams.map((team) => `<option>${team.name}</option>`).join("")}</select></label></div><footer><button class="module-secondary" type="button" data-close-user-dialog>CANCELAR</button><button class="module-primary" type="submit">SALVAR TREINADOR</button></footer></form></dialog>`
     });
   }
@@ -787,31 +790,73 @@
     });
   }
 
+  function flowSteps(current, labels) {
+    return `<ol class="flow-steps" aria-label="Etapas do fluxo">${labels.map((label, index) => `<li class="${index + 1 === current ? "is-current" : index + 1 < current ? "is-done" : ""}"><span>${index + 1}</span>${label}</li>`).join("")}</ol>`;
+  }
+
+  function newMatchScreen() {
+    const step = prototypeState.matchStep;
+    const selected = rosterPlayers.filter((player) => prototypeState.participants.has(player.name));
+    const content = step === 1 ? `
+      <section class="module-card prototype-form"><header><span class="module-label">DADOS DA PARTIDA</span><strong>Contexto competitivo</strong></header><div class="prototype-form__grid"><label>ADVERSÁRIO<input value="Green Owls" aria-label="Adversário"></label><label>EVENTO<input value="VPL 2026 · Semana 3" aria-label="Evento"></label><label>DATA<input type="date" value="2026-04-04"></label><label>FORMATO<select><option>MD3</option><option>MD1</option><option>MD5</option></select></label><label class="is-wide">MAPA / SÉRIE<select><option>Haven · Mapa 1</option><option>Ascent · Mapa 2</option><option>Lotus · Mapa 3</option></select></label></div></section>` : step === 2 ? `
+      <section class="module-card participant-picker"><header><div><span class="module-label">PARTICIPANTES DA EQUIPE</span><strong>${selected.length} de 5 jogadores selecionados</strong><small>Somente jogadores vinculados à RUSH ONE podem participar.</small></div><span class="status-badge status-badge--${selected.length ? "success" : "pending"}">${selected.length ? "SELEÇÃO VÁLIDA" : "SELECIONE AO MENOS 1"}</span></header><div class="participant-picker__list">${rosterPlayers.map((player) => { const checked = prototypeState.participants.has(player.name); return `<button type="button" class="participant-option${checked ? " is-selected" : ""}" data-proto-action="toggle-participant" data-player="${player.name}" aria-pressed="${checked}"><img src="${player.icon}" alt=""><span><strong>${player.name}</strong><small>${player.role} · ${player.agent}</small></span><i>${checked ? "✓" : "+"}</i></button>`; }).join("")}</div><p class="module-notice"><strong>RN002 · RN003:</strong> a lista exclui adversários e impede visualmente participantes duplicados ou acima de cinco.</p></section>` : step === 3 ? `
+      <section class="module-card readiness-card"><span class="module-label">PRONTIDÃO DA PARTIDA</span><h2>Participantes vinculados</h2><div class="readiness-card__checks"><span class="is-done">✓ Dados da partida</span><span class="is-done">✓ ${selected.length} participante(s) da equipe</span><span>○ Gravações podem ser incluídas agora ou depois</span></div><p>Ao concluir, a partida será apresentada como <strong>aguardando gravações</strong>. O protótipo não salva registros reais.</p></section>` : `
+      <section class="module-card match-created"><span>✓</span><h2>PARTIDA CRIADA PARA DEMONSTRAÇÃO</h2><p>Green Owls · VPL 2026 · ${selected.length} participantes. O próximo passo é vincular os POVs de cada participante.</p><div><button class="module-secondary" type="button" data-route="partidas">VER LISTA</button><button class="module-primary" type="button" data-route="gravacoes">VINCULAR GRAVAÇÕES</button></div></section>`;
+    return moduleShell({ screen: "nova-partida", activeNav: "matches", eyebrow: "PARTIDAS · NOVO REGISTRO", title: "NOVA PARTIDA", description: "Cadastre primeiro o contexto e os participantes. As etapas tornam as regras visíveis antes do envio de POVs.", actions: '<button class="module-secondary" type="button" data-route="partidas">CANCELAR</button>', content: `${flowSteps(step, ["Partida", "Participantes", "Prontidão", "Concluir"])}${content}${step < 4 ? `<footer class="flow-actions"><button class="module-secondary" type="button" data-proto-action="match-back" ${step === 1 ? "disabled" : ""}>VOLTAR</button><button class="module-primary" type="button" data-proto-action="match-next" ${step === 2 && !selected.length ? "disabled" : ""}>${step === 3 ? "CRIAR PARTIDA" : "CONTINUAR"}</button></footer>` : ""}` });
+  }
+
+  function scoreboardScreen() {
+    const complete = prototypeState.scoreboardState !== "incomplete";
+    const corrected = prototypeState.scoreboardState === "corrected";
+    return moduleShell({ screen: "scoreboard", activeNav: "matches", eyebrow: "PARTIDA · RUSH ONE VS GREEN OWLS", title: corrected ? "SCOREBOARD CORRIGIDO" : "REGISTRAR SCOREBOARD", description: "Preencha o placar final e as estatísticas dos participantes que possuem POV. Os valores abaixo são apenas cenário de demonstração.", actions: '<button class="module-secondary" type="button" data-route="partidas">VOLTAR À PARTIDA</button>', content: `
+      <section class="state-switcher" aria-label="Cenários de demonstração"><span>CENÁRIO VISUAL</span><button data-proto-action="score-state" data-state="incomplete" class="${!complete ? "is-active" : ""}">INCOMPLETO</button><button data-proto-action="score-state" data-state="complete" class="${complete && !corrected ? "is-active" : ""}">COMPLETO</button><button data-proto-action="score-state" data-state="corrected" class="${corrected ? "is-active" : ""}">CORRIGIDO</button></section>
+      <section class="score-entry module-card"><header><div><span class="module-label">PLACAR FINAL</span><strong>RUSH ONE <em>2</em> — <em>0</em> GREEN OWLS</strong></div><span class="status-badge status-badge--${complete ? "success" : "pending"}">${complete ? corrected ? "CORRIGIDO" : "COMPLETO" : "PENDENTE"}</span></header><div class="score-entry__table"><div class="score-entry__head"><span>PARTICIPANTE / AGENTE</span><span>K</span><span>D</span><span>A</span><span>FK</span><span>+/−</span><span>POV</span></div>${homeScoreboard.slice(0, 5).map((player, index) => `<div class="score-entry__row ${!complete && index === 4 ? "is-missing" : ""}"><span><img src="${player.icon}" alt="">${player.player}<small>${player.agent}</small></span><input value="${!complete && index === 4 ? "" : player.k}" placeholder="—" aria-label="Abates de ${player.player}"><input value="${!complete && index === 4 ? "" : player.d}" placeholder="—" aria-label="Mortes de ${player.player}"><input value="${!complete && index === 4 ? "" : player.a}" placeholder="—" aria-label="Assistências de ${player.player}"><input value="${!complete && index === 4 ? "" : player.fk}" placeholder="—" aria-label="First blood de ${player.player}"><b>${!complete && index === 4 ? "—" : player.diff}</b><span class="status-badge status-badge--${!complete && index === 4 ? "pending" : "success"}">${!complete && index === 4 ? "PENDENTE" : "VINCULADO"}</span></div>`).join("")}</div><footer><p class="module-notice"><strong>RN010–RN012:</strong> agente, K, D, A, FK e saldo são apresentados por participante com POV. ${corrected ? "Os indicadores de equipe e jogador foram sinalizados como recalculados." : ""}</p><button class="module-primary" type="button" data-proto-action="score-state" data-state="complete" ${complete ? "disabled" : ""}>MARCAR COMO COMPLETO</button></footer></section>
+      ${corrected ? '<section class="recalculation-banner"><strong>INDICADORES RECALCULADOS</strong><span>O painel e o desempenho individual passam a usar o scoreboard corrigido.</span></section>' : ""}` });
+  }
+
+  function traceabilityScreen() {
+    const groups = [
+      ["Acesso e gestão", "RF001–RF004", "RN001, RN016–RN018", "Login, gestão administrativa, perfil da equipe e elenco"],
+      ["Partidas e desempenho", "RF005–RF007", "RN002–RN003, RN010–RN014, RN027, RN029, RN033–RN034", "Wizard de partida, scoreboard, exclusão e painéis"],
+      ["POVs e revisão", "RF008–RF012", "RN004–RN009, RN019–RN026, RN028, RN030", "Gravações, sincronização, timeline, anotações e conclusão"],
+      ["Síntese", "RF013", "RN015, RN031–RN032", "Versões preservadas e base da síntese"]
+    ];
+    return moduleShell({ screen: "rastreabilidade", activeNav: "reviews", eyebrow: "DOCUMENTAÇÃO DO PROTÓTIPO", title: "MATRIZ DE RASTREABILIDADE", description: "Mapa visual dos requisitos funcionais e regras de negócio cobertos pelos fluxos de demonstração.", actions: '<button class="module-secondary" type="button" data-route="dashboard">VOLTAR AO PAINEL</button>', content: `<section class="traceability-grid">${groups.map((group, index) => `<article class="traceability-card"><span>0${index + 1}</span><h2>${group[0]}</h2><p><strong>${group[1]}</strong><small>${group[2]}</small></p><em>${group[3]}</em><i>COBERTURA VISUAL</i></article>`).join("")}</section><p class="module-notice"><strong>Escopo:</strong> cada item é representado por estado, aviso, checklist ou bloqueio visual. Não há validação sistêmica, persistência ou processamento real.</p>` });
+  }
+
+  function teamProfileScreen() {
+    return moduleShell({ screen: "perfil-equipe", activeNav: "team", eyebrow: "MINHA EQUIPE · CONFIGURAÇÃO", title: "PERFIL DA EQUIPE", description: "Mantenha os dados públicos da equipe sob responsabilidade do treinador autenticado.", actions: '<button class="module-secondary" type="button" data-route="dashboard">VOLTAR AO PAINEL</button>', content: `<section class="module-card prototype-form team-profile-form"><header><div><span class="module-label">RUSH ONE ESPORTS</span><strong>Informações da equipe</strong></div><span class="status-badge status-badge--success">TREINADOR RESPONSÁVEL</span></header><div class="prototype-form__grid"><label>NOME DA EQUIPE<input value="RUSH ONE ESPORTS"></label><label>TAG / SIGLA<input value="RSH" maxlength="4"></label><label>REGIÃO<select><option>América do Sul · Brasil</option><option>América do Norte</option><option>Europa</option></select></label><label>LOGO<input type="text" value="rush-one-logo.png" aria-label="Arquivo de logo ilustrativo"></label></div><footer class="flow-actions"><button class="module-secondary" type="button" data-proto-action="team-profile-reset">CANCELAR</button><button class="module-primary" type="button" data-proto-action="team-profile-save">SALVAR ALTERAÇÕES</button></footer></section><p class="module-notice"><strong>RN001 · RN018:</strong> o treinador é identificado como responsável e só acessa os dados da própria equipe; esta edição é visual e temporária.</p>` });
+  }
+
   function recordingsScreen() {
+    const singlePov = prototypeState.recordingMode === "single";
+    const invalid = prototypeState.recordingMode === "invalid";
+    const visiblePlayers = singlePov ? rosterPlayers.slice(0, 1) : rosterPlayers;
     return moduleShell({
       screen: "gravacoes",
       activeNav: "matches",
       eyebrow: "PARTIDA · RUSH ONE VS GREEN OWLS",
       title: "GRAVAÇÕES DA PARTIDA",
       description: "Vincule de uma a cinco gravações POV aos participantes antes de iniciar a sincronização.",
-      actions: '<button class="module-secondary" type="button" data-route="partidas">VOLTAR À PARTIDA</button><button class="module-primary" type="button" data-route="sincronizacao">SINCRONIZAR POVs</button>',
-      content: `<section class="match-context"><div><img src="${assets.rushone}" alt=""><span><small>28 MAR 2026 · VPL</small><strong>RUSH ONE 2 — 0 GREEN OWLS</strong><em>HAVEN · MAPA 1</em></span></div><span class="status-badge status-badge--success">4 ARQUIVOS PRONTOS</span></section>
-        <section class="recording-grid" aria-label="Gravações dos jogadores">${rosterPlayers.map((player, index) => `<article class="recording-card${index === 4 ? " is-pending" : ""}" data-recording-card><header><img src="${player.icon}" alt="${player.agent}"><span><strong>${player.name}</strong><small>${player.role} · ${player.agent}</small></span><span class="status-badge status-badge--${index === 4 ? "pending" : "success"}" data-recording-status>${index === 4 ? "PENDENTE" : "PRONTO"}</span></header><div class="recording-card__file" data-recording-file><span aria-hidden="true">${index === 4 ? "＋" : "▶"}</span><div><strong>${index === 4 ? "Nenhum arquivo vinculado" : `${player.name.toLowerCase()}_haven_pov.mp4`}</strong><small>${index === 4 ? "MP4, WEBM ou MOV · até 5 GB" : `${(1.8 + index * .4).toFixed(1)} GB · 42:18`}</small></div></div><footer><label class="module-secondary recording-upload"><input type="file" accept="video/mp4,video/webm,video/quicktime" data-recording-input>SELECIONAR ARQUIVO</label><button type="button" data-remove-recording ${index === 4 ? "disabled" : ""}>REMOVER</button></footer></article>`).join("")}</section>
-        <p class="module-notice"><strong>Validação local:</strong> os arquivos são simulados e não são enviados a um servidor. É possível iniciar a sincronização com pelo menos um POV.</p>`
+      actions: `<button class="module-secondary" type="button" data-route="partidas">VOLTAR À PARTIDA</button><button class="module-primary" type="button" data-route="${singlePov ? "revisao" : "sincronizacao"}">${singlePov ? "INICIAR REVISÃO" : "SINCRONIZAR POVs"}</button>`,
+      content: `<section class="state-switcher" aria-label="Cenários de gravações"><span>CENÁRIO VISUAL</span><button data-proto-action="recording-mode" data-mode="single" class="${singlePov ? "is-active" : ""}">1 POV</button><button data-proto-action="recording-mode" data-mode="multi" class="${!singlePov && !invalid ? "is-active" : ""}">MÚLTIPLOS POVs</button><button data-proto-action="recording-mode" data-mode="invalid" class="${invalid ? "is-active" : ""}">ARQUIVO INVÁLIDO</button></section><section class="match-context"><div><img src="${assets.rushone}" alt=""><span><small>28 MAR 2026 · VPL</small><strong>RUSH ONE 2 — 0 GREEN OWLS</strong><em>HAVEN · MAPA 1</em></span></div><span class="status-badge status-badge--${invalid ? "pending" : "success"}">${invalid ? "1 ARQUIVO RECUSADO" : `${singlePov ? 1 : 4} ARQUIVO(S) PRONTO(S)`}</span></section>
+        <section class="recording-grid" aria-label="Gravações dos jogadores">${visiblePlayers.map((player, index) => `<article class="recording-card${(index === 4 || invalid) ? " is-pending" : ""}" data-recording-card><header><img src="${player.icon}" alt="${player.agent}"><span><strong>${player.name}</strong><small>${player.role} · ${player.agent} · participante confirmado</small></span><span class="status-badge status-badge--${(index === 4 || invalid) ? "pending" : "success"}" data-recording-status>${invalid ? "INCOMPATÍVEL" : index === 4 ? "PENDENTE" : "PRONTO"}</span></header><div class="recording-card__file" data-recording-file><span aria-hidden="true">${(index === 4 || invalid) ? "!" : "▶"}</span><div><strong>${invalid ? "gameplay_haven.avi" : index === 4 ? "Nenhum arquivo vinculado" : `${player.name.toLowerCase()}_haven_pov.mp4`}</strong><small>${invalid ? "Formato não aceito · escolha MP4, WEBM ou MOV" : index === 4 ? "MP4, WEBM ou MOV · até 5 GB" : `${(1.8 + index * .4).toFixed(1)} GB · 42:18`}</small></div></div><footer><label class="module-secondary recording-upload"><input type="file" accept="video/mp4,video/webm,video/quicktime" data-recording-input>SELECIONAR ARQUIVO</label><button type="button" data-remove-recording ${(index === 4 || invalid) ? "disabled" : ""}>REMOVER</button></footer></article>`).join("")}</section>
+        <p class="module-notice"><strong>RN005–RN007 · RN020:</strong> uma gravação principal por participante, de um a cinco arquivos da mesma partida. ${singlePov ? "Com somente um POV, a referência temporal é a própria gravação e a sincronização é dispensada." : ""}</p>`
     });
   }
 
   function synchronizationScreen() {
+    const syncFailed = prototypeState.syncState === "failed";
     return moduleShell({
       screen: "sincronizacao",
       activeNav: "reviews",
       eyebrow: "PREPARAÇÃO DA REVISÃO · HAVEN",
       title: "SINCRONIZAÇÃO DE POVs",
       description: "Ajuste o início de cada gravação em relação ao POV de referência para manter uma linha do tempo comum.",
-      actions: '<button class="module-secondary" type="button" data-route="gravacoes">VOLTAR ÀS GRAVAÇÕES</button><button class="module-primary" type="button" data-validate-sync>VALIDAR E REVISAR</button>',
-      content: `<section class="sync-overview"><div><span class="module-label">POV DE REFERÊNCIA</span><label><select data-reference-pov>${rosterPlayers.slice(0, 4).map((player, index) => `<option${index === 0 ? " selected" : ""}>${player.name} · ${player.agent}</option>`).join("")}</select></label></div><div><span class="module-label">DETECÇÃO DO PLACAR</span><strong data-ocr-summary>AGUARDANDO ANÁLISE</strong><small>OCR identifica o primeiro round visível em cada gravação.</small></div><button class="module-secondary" type="button" data-auto-sync>DETECTAR AUTOMATICAMENTE</button></section>
+      actions: `<button class="module-secondary" type="button" data-route="gravacoes">VOLTAR ÀS GRAVAÇÕES</button><button class="module-primary" type="button" data-validate-sync ${syncFailed ? "disabled" : ""}>VALIDAR E REVISAR</button>`,
+      content: `<section class="state-switcher" aria-label="Cenários de sincronização"><span>CENÁRIO VISUAL</span><button data-proto-action="sync-state" data-state="pending" class="${prototypeState.syncState === "pending" ? "is-active" : ""}">PENDENTE</button><button data-proto-action="sync-state" data-state="ready" class="${prototypeState.syncState === "ready" ? "is-active" : ""}">VALIDADA</button><button data-proto-action="sync-state" data-state="failed" class="${syncFailed ? "is-active" : ""}">FALHA OCR</button></section><section class="sync-overview"><div><span class="module-label">POV DE REFERÊNCIA</span><label><select data-reference-pov>${rosterPlayers.slice(0, 4).map((player, index) => `<option${index === 0 ? " selected" : ""}>${player.name} · ${player.agent}</option>`).join("")}</select></label></div><div><span class="module-label">DETECÇÃO DO PLACAR</span><strong data-ocr-summary>${syncFailed ? "OCR NÃO IDENTIFICOU MARCOS" : prototypeState.syncState === "ready" ? "4/4 MARCOS VALIDADOS" : "AGUARDANDO ANÁLISE"}</strong><small>${syncFailed ? "Use o ajuste manual para recuperar a correspondência temporal." : "OCR identifica o primeiro round visível em cada gravação."}</small></div><button class="module-secondary" type="button" data-auto-sync>DETECTAR AUTOMATICAMENTE</button></section>
         <section class="sync-list" aria-label="Ajustes de sincronização"><header><span>PARTICIPANTE</span><span>MARCO DETECTADO</span><span>AJUSTE MANUAL</span><span>ESTADO</span></header>${rosterPlayers.slice(0, 4).map((player, index) => `<article class="sync-row" data-sync-row><div><img src="${player.icon}" alt="${player.agent}"><span><strong>${player.name}</strong><small>${player.agent}</small></span></div><div><strong data-sync-marker>${index === 0 ? "ROUND 01 · 00:08" : "NÃO ANALISADO"}</strong><small>placar ${index === 0 ? "0 — 0" : "—"}</small></div><label><input type="range" min="-30" max="30" value="${index === 0 ? 0 : index * 2}" data-sync-range><output data-offset-value>${index === 0 ? "0.0" : `+${index * 2}.0`}s</output></label><span class="status-badge status-badge--${index === 0 ? "success" : "pending"}" data-sync-status>${index === 0 ? "REFERÊNCIA" : "PENDENTE"}</span></article>`).join("")}</section>
-        <p class="module-notice"><strong>Critério de validação:</strong> todos os POVs devem possuir um marco temporal e os ajustes precisam permanecer dentro da duração disponível.</p>`
+        <p class="module-notice"><strong>Critério de validação:</strong> todos os POVs devem possuir um marco temporal e os ajustes precisam permanecer dentro da duração disponível. ${syncFailed ? "A revisão fica visualmente bloqueada até que um cenário válido seja escolhido." : ""}</p>`
     });
   }
 
@@ -861,7 +906,7 @@
       eyebrow: "SESSÃO EM ANDAMENTO · MAPA 1",
       title: "REVISÃO MULTI-POV",
       description: "Compare as perspectivas sincronizadas, registre observações e complete o scoreboard da partida.",
-      actions: '<button class="module-secondary" type="button" data-route="sincronizacao">AJUSTAR SINCRONIA</button><button class="module-primary" type="button" data-finalize-review>FINALIZAR REVISÃO</button><button class="module-primary is-hidden" type="button" data-open-synthesis data-route="sintese">GERAR SÍNTESE</button>',
+      actions: '<button class="module-secondary" type="button" data-route="sincronizacao">AJUSTAR SINCRONIA</button><button class="module-secondary" type="button" data-route="rastreabilidade">REQUISITOS</button><button class="module-primary" type="button" data-finalize-review>FINALIZAR REVISÃO</button><button class="module-primary is-hidden" type="button" data-open-synthesis data-route="sintese">GERAR SÍNTESE</button>',
       sidePanel: matchPlayersPanel(),
       content: `<div class="review-workspace"><section class="pov-stage"><div class="pov-viewer" data-pov-viewer aria-label="Visualizador de cinco posições Multi-POV">${reviewPovViewer()}</div>
         <div class="review-player" data-review-player style="--timeline-progress:30.02%">
@@ -889,8 +934,9 @@
             </div>
           </div>
         </div></section>
-          <aside class="review-notes"><header><div><span class="module-label">ANOTAÇÕES DA SESSÃO</span><strong data-note-count>3 REGISTROS</strong></div><span class="status-badge status-badge--progress" data-review-current-time>12:42</span></header><form data-note-form><label><span>CATEGORIA</span><select name="tag"><option>TÁTICA</option><option>ECONOMIA</option><option>SETUP</option><option>INDIVIDUAL</option></select></label><label><span>OBSERVAÇÃO</span><textarea name="body" required placeholder="Registre o ponto observado neste instante..."></textarea></label><button class="module-primary" type="submit">＋ ADICIONAR EM <span data-note-time-label>12:42</span></button></form><div class="review-note-list" data-review-note-list>${recentNotes.map((note, index) => `<article data-review-note><div><span>${note.tag} · ${note.round}</span><strong>${note.time}</strong></div><p>${note.body}</p><footer><button type="button" data-edit-note>EDITAR</button><button type="button" data-delete-note>EXCLUIR</button></footer></article>`).join("")}</div></aside></div>
-        <section class="review-completion"><div><span class="module-label">COMPLETUDE DA REVISÃO</span><strong data-review-state>4/5 POVs REVISADOS</strong></div><div class="review-checks"><span class="is-done">SINCRONIA VALIDADA</span><span class="is-done">SCOREBOARD 5/5</span><span data-final-check>REVISÃO PENDENTE</span></div></section>`
+          <aside class="review-notes"><header><div><span class="module-label">ANOTAÇÕES DA SESSÃO</span><strong data-note-count>3 REGISTROS</strong></div><span class="status-badge status-badge--progress" data-review-current-time>12:42</span></header><form data-note-form><label><span>CATEGORIA</span><select name="tag"><option>TÁTICA</option><option>ECONOMIA</option><option>SETUP</option><option>INDIVIDUAL</option></select></label><label><span>VINCULAR A</span><select name="target"><option>EQUIPE · RUSH ONE</option>${rosterPlayers.map((player) => `<option>JOGADOR · ${player.name}</option>`).join("")}</select></label><label><span>OBSERVAÇÃO</span><textarea name="body" required placeholder="Registre o ponto observado neste instante..."></textarea></label><button class="module-primary" type="submit">ADICIONAR EM <span data-note-time-label>12:42</span></button></form><div class="review-note-list" data-review-note-list>${recentNotes.map((note, index) => `<article data-review-note><div><span>${note.tag} · ${note.round}</span><strong>${note.time}</strong></div><p>${note.body}</p><footer><button type="button" data-edit-note>EDITAR</button><button type="button" data-delete-note>EXCLUIR</button></footer></article>`).join("")}</div></aside></div>
+        <section class="review-completion"><div><span class="module-label">COMPLETUDE DA REVISÃO</span><strong data-review-state>4/5 POVs REVISADOS</strong></div><div class="review-checks"><span class="is-done">SINCRONIA VALIDADA</span><span class="is-done">SCOREBOARD 5/5</span><span data-final-check>REVISÃO PENDENTE</span></div></section>
+        <dialog class="module-dialog completion-dialog" data-finalize-dialog><form method="dialog"><header><div><span class="module-label">VALIDAÇÃO DE CONCLUSÃO</span><h2>Finalizar revisão?</h2></div><button type="button" data-proto-action="close-finalize" aria-label="Fechar">×</button></header><div class="dialog-fields"><div class="completion-checklist"><span class="is-done">✓ Uma sessão vinculada à partida</span><span class="is-done">✓ Sincronização validada</span><span class="${prototypeState.scoreboardState === "incomplete" ? "is-pending" : "is-done"}">${prototypeState.scoreboardState === "incomplete" ? "! Scoreboard incompleto" : "✓ Scoreboard completo"}</span><span class="is-done">✓ Anotações preservadas na timeline</span></div><p class="module-notice"><strong>RN013 · RN028:</strong> no cenário incompleto, a conclusão permanece bloqueada. Altere o scoreboard para demonstrar a liberação.</p></div><footer><button class="module-secondary" type="button" data-proto-action="close-finalize">CANCELAR</button><button class="module-primary" type="button" data-proto-action="confirm-finalize" ${prototypeState.scoreboardState === "incomplete" ? "disabled" : ""}>FINALIZAR REVISÃO</button></footer></form></dialog>`
     });
   }
 
@@ -905,6 +951,45 @@
       content: `<section class="synthesis-summary"><article><span>PARTIDA</span><strong>RUSH ONE 2 — 0 GREEN OWLS</strong><small>HAVEN · 28 MAR 2026</small></article><article><span>BASE DA SÍNTESE</span><strong>3 ANOTAÇÕES</strong><small>4 POVs sincronizados</small></article><article><span>STATUS</span><strong>REVISÃO FINALIZADA</strong><small>Scoreboard completo</small></article></section>
         <div class="synthesis-layout"><section class="module-card synthesis-result"><header><div><span class="module-label">VERSÃO ATUAL</span><h2>SÍNTESE TÁTICA</h2></div><span class="status-badge status-badge--muted" data-synthesis-status>NÃO GERADA</span></header><div class="synthesis-placeholder" data-synthesis-placeholder><span>Σ</span><strong>NENHUMA SÍNTESE GERADA</strong><p>Use as anotações da revisão para criar uma versão consolidada e editável.</p></div><div class="synthesis-copy is-hidden" data-synthesis-copy><h3>VISÃO GERAL</h3><p>A equipe manteve boa organização defensiva, mas apresentou atraso nas rotações para o bomb A. O uso coordenado de utilitários foi decisivo nos retakes dos rounds finais.</p><h3>PONTOS DE ATENÇÃO</h3><ul><li>Antecipar a rotação após o primeiro contato no A.</li><li>Evitar compras fragmentadas em rounds de economia.</li><li>Preservar a Viper Pit para o segundo contato no pós-plant.</li></ul><h3>PRÓXIMA SESSÃO</h3><p>Treinar comunicação de retake e execução de crossfire em situações 3v3.</p></div></section><aside class="module-card synthesis-history"><header><span class="module-label">HISTÓRICO DE VERSÕES</span><small>Registro local da prototipação</small></header><div data-synthesis-history><p class="empty-history">A primeira versão aparecerá após a geração.</p></div></aside></div>`
     });
+  }
+
+  const actionIcons = [
+    ["[data-route='dashboard']", "house"], ["[data-route='partidas']", "calendar-days"], ["[data-route='jogadores']", "users-round"],
+    ["[data-route='revisoes']", "history"], ["[data-route='gravacoes']", "video"], ["[data-route='sincronizacao']", "waypoints"],
+    ["[data-route='revisao']", "play"], ["[data-route='sintese']", "sparkles"], ["[data-route='nova-partida']", "plus"],
+    ["[data-route='scoreboard']", "chart-no-axes-combined"], ["[data-route='rastreabilidade']", "list-checks"], ["[data-route='perfil-equipe']", "settings-2"],
+    ["[data-open-team-dialog]", "plus"], ["[data-open-user-dialog], [data-proto-action='open-player-dialog']", "user-plus"],
+    ["[data-edit-user], [data-edit-team], [data-edit-note], [data-proto-action='team-profile-save']", "square-pen"],
+    ["[data-toggle-user]", "power"], ["[data-remove-recording]", "trash-2"],
+    ["[data-auto-sync], [data-proto-action='sync-state']", "scan-line"], ["[data-validate-sync], [data-finalize-review], [data-proto-action='confirm-finalize']", "circle-check"],
+    ["[data-generate-synthesis]", "sparkles"], ["[data-delete-note], [data-proto-action='remove-player'], [data-proto-action='open-delete-match'], [data-proto-action='confirm-delete-match']", "trash-2"],
+    ["[data-proto-action='match-next']", "arrow-right"], ["[data-proto-action='match-back'], [data-proto-action='team-profile-reset']", "arrow-left"],
+    ["[data-proto-action='toggle-participant']", "user-check"], ["[data-proto-action='score-state']", "circle-dot"],
+    ["[data-proto-action='recording-mode']", "film"], ["[data-proto-action^='close-']", "x"], [".recording-upload", "upload"], ["[data-note-form] button", "plus"], ["[data-password-toggle]", "eye"]
+  ];
+
+  function resolveActionIcon(control, fallback) {
+    if (control.matches("[data-password-toggle]")) {
+      return control.getAttribute("aria-pressed") === "true" ? "eye-off" : "eye";
+    }
+    const label = control.textContent.trim().toLocaleLowerCase("pt-BR");
+    if (label.includes("cancelar") || label.includes("fechar")) return "x";
+    if (label.includes("voltar")) return "arrow-left";
+    if (label.includes("nova partida")) return "plus";
+    if (label.includes("continuar")) return "arrow-right";
+    return fallback;
+  }
+
+  function renderActionIcons() {
+    actionIcons.forEach(([selector, icon]) => {
+      app.querySelectorAll(selector).forEach((control) => {
+        if (control.querySelector(".ui-action-icon, [data-lucide]")) return;
+        control.insertAdjacentHTML("afterbegin", `<i data-lucide="${resolveActionIcon(control, icon)}" class="ui-action-icon" aria-hidden="true"></i>`);
+      });
+    });
+    if (window.lucide?.createIcons) {
+      window.lucide.createIcons({ attrs: { class: "ui-action-icon", "aria-hidden": "true", "stroke-width": 1.8 } });
+    }
   }
 
   function bindCommonInteractions() {
@@ -949,12 +1034,20 @@
         const show = input.type === "password";
         input.type = show ? "text" : "password";
         button.setAttribute("aria-label", show ? "Ocultar senha" : "Mostrar senha");
+        button.setAttribute("aria-pressed", String(show));
+        button.classList.toggle("is-active", show);
+        button.querySelector(".ui-action-icon")?.remove();
+        button.insertAdjacentHTML("afterbegin", `<i data-lucide="${show ? "eye-off" : "eye"}" class="ui-action-icon" aria-hidden="true"></i>`);
+        window.lucide?.createIcons({ attrs: { class: "ui-action-icon", "aria-hidden": "true", "stroke-width": 1.8 } });
       });
     });
 
     const loginForm = document.querySelector('[data-form="login"]');
     if (loginForm) loginForm.addEventListener("submit", (event) => {
       event.preventDefault();
+      const userMissing = !loginForm.elements.user.value.trim();
+      const passwordMissing = !loginForm.elements.password.value;
+      if (userMissing || passwordMissing) return;
       const profile = getProfileFromUrl();
       const credential = loginForm.elements.user.value.trim();
       const defaultName = profile === "admin" ? "Administrador" : "Lucas Ferreira";
@@ -1110,6 +1203,7 @@
       teamForm.elements.name.value = team.name;
       teamForm.elements.tag.value = team.tag;
       teamForm.elements.region.value = team.region;
+      teamForm.elements.coach.value = team.coach;
       document.querySelector("[data-team-dialog-title]").textContent = "EDITAR EQUIPE";
       teamDialog.showModal();
     };
@@ -1134,8 +1228,8 @@
         name: teamForm.elements.name.value.trim().toUpperCase(),
         tag: teamForm.elements.tag.value.trim().toUpperCase(),
         region: teamForm.elements.region.value,
-        coach: index >= 0 ? managedTeams[index].coach : "AGUARDANDO VÍNCULO",
-        status: index >= 0 ? managedTeams[index].status : "PENDENTE",
+        coach: teamForm.elements.coach.value,
+        status: "ATIVA",
         logo: index >= 0 ? managedTeams[index].logo : assets.rushone
       };
       if (index >= 0) managedTeams[index] = team;
@@ -1314,24 +1408,22 @@
     });
     const finalizeReview = document.querySelector("[data-finalize-review]");
     if (finalizeReview) finalizeReview.addEventListener("click", () => {
-      finalizeReview.disabled = true;
-      finalizeReview.textContent = "REVISÃO FINALIZADA";
-      document.querySelector("[data-review-state]").textContent = "5/5 POVs REVISADOS";
-      const finalCheck = document.querySelector("[data-final-check]");
-      finalCheck.textContent = "REVISÃO FINALIZADA";
-      finalCheck.classList.add("is-done");
-      document.querySelector("[data-open-synthesis]").classList.remove("is-hidden");
-      showToast("Revisão finalizada. A síntese está disponível.");
+      const dialog = document.querySelector("[data-finalize-dialog]");
+      if (dialog) dialog.showModal();
     });
 
     const generateSynthesis = document.querySelector("[data-generate-synthesis]");
     if (generateSynthesis) generateSynthesis.addEventListener("click", () => {
+      prototypeState.synthesisVersions += 1;
       document.querySelector("[data-synthesis-placeholder]").classList.add("is-hidden");
       document.querySelector("[data-synthesis-copy]").classList.remove("is-hidden");
       const status = document.querySelector("[data-synthesis-status]");
       status.className = "status-badge status-badge--success";
-      status.textContent = "VERSÃO 1 GERADA";
-      document.querySelector("[data-synthesis-history]").innerHTML = '<article class="history-version"><span>V1</span><div><strong>SÍNTESE TÁTICA</strong><small>Gerada agora · 3 anotações</small></div><span class="status-badge status-badge--success">ATUAL</span></article>';
+      status.textContent = `VERSÃO ${prototypeState.synthesisVersions} GERADA`;
+      const history = document.querySelector("[data-synthesis-history]");
+      if (prototypeState.synthesisVersions === 1) history.innerHTML = "";
+      history.insertAdjacentHTML("afterbegin", `<article class="history-version"><span>V${prototypeState.synthesisVersions}</span><div><strong>SÍNTESE TÁTICA</strong><small>Gerada agora · 3 anotações · placar 2 — 0${prototypeState.scoreboardState === "corrected" ? " · scoreboard corrigido" : ""}</small></div><span class="status-badge status-badge--success">ATUAL</span></article>`);
+      history.querySelectorAll(".history-version").forEach((item, index) => { const badge = item.querySelector(".status-badge"); if (index > 0 && badge) { badge.className = "status-badge status-badge--muted"; badge.textContent = "PRESERVADA"; } });
       generateSynthesis.textContent = "GERAR NOVA VERSÃO";
       showToast("Síntese gerada a partir das anotações.");
     });
@@ -1361,14 +1453,73 @@
       gravacoes: recordingsScreen,
       sincronizacao: synchronizationScreen,
       revisao: reviewScreen,
-      sintese: synthesisScreen
+      sintese: synthesisScreen,
+      "nova-partida": newMatchScreen,
+      scoreboard: scoreboardScreen,
+      rastreabilidade: traceabilityScreen,
+      "perfil-equipe": teamProfileScreen
     };
 
     app.innerHTML = screens[route]();
-    const titles = { equipe: "VOD Review — Administração", dashboard: "RUSH ONE — Dashboard", partidas: "RUSH ONE — Partidas", jogadores: "RUSH ONE — Jogadores", usuarios: "VOD Review — Administração", revisoes: "RUSH ONE — Revisões", gravacoes: "RUSH ONE — Gravações", sincronizacao: "RUSH ONE — Sincronização", revisao: "RUSH ONE — Revisão Multi-POV", sintese: "RUSH ONE — Síntese" };
-    document.title = titles[route] || "VOD Review — Plataforma de análise competitiva";
+    const titles = { equipe: "VOD Review — Administração", dashboard: "RUSH ONE — Dashboard", partidas: "RUSH ONE — Partidas", jogadores: "RUSH ONE — Jogadores", usuarios: "VOD Review — Administração", revisoes: "RUSH ONE — Revisões", gravacoes: "RUSH ONE — Gravações", sincronizacao: "RUSH ONE — Sincronização", revisao: "RUSH ONE — Revisão Multi-POV", sintese: "RUSH ONE — Síntese", "nova-partida": "RUSH ONE — Nova Partida", scoreboard: "RUSH ONE — Scoreboard", rastreabilidade: "VOD Review — Rastreabilidade", "perfil-equipe": "RUSH ONE — Perfil da Equipe" };
+    document.title = titles[route] || "VodReview";
     bindCommonInteractions();
+    renderActionIcons();
   }
+
+  function prototypeToast(message) {
+    const toast = document.querySelector("[data-toast]");
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.add("is-visible");
+    window.setTimeout(() => toast.classList.remove("is-visible"), 2600);
+  }
+
+  app.addEventListener("click", (event) => {
+    const control = event.target.closest("[data-proto-action]");
+    if (!control) return;
+    const action = control.dataset.protoAction;
+    if (action === "toggle-participant") {
+      const name = control.dataset.player;
+      if (prototypeState.participants.has(name)) prototypeState.participants.delete(name);
+      else if (prototypeState.participants.size < 5) prototypeState.participants.add(name);
+      else { prototypeToast("Limite visual de cinco participantes atingido."); return; }
+      render();
+    }
+    if (action === "match-next") { prototypeState.matchStep = Math.min(4, prototypeState.matchStep + 1); render(); }
+    if (action === "match-back") { prototypeState.matchStep = Math.max(1, prototypeState.matchStep - 1); render(); }
+    if (action === "score-state") { prototypeState.scoreboardState = control.dataset.state; render(); }
+    if (action === "recording-mode") { prototypeState.recordingMode = control.dataset.mode; render(); }
+    if (action === "sync-state") { prototypeState.syncState = control.dataset.state; render(); }
+    if (action === "team-profile-save") prototypeToast("Cenário visual: perfil da equipe atualizado.");
+    if (action === "team-profile-reset") prototypeToast("Alterações visuais descartadas.");
+    if (action === "open-delete-match") document.querySelector("[data-delete-match-dialog]")?.showModal();
+    if (action === "close-delete-match") document.querySelector("[data-delete-match-dialog]")?.close();
+    if (action === "confirm-delete-match") {
+      document.querySelector("[data-delete-match-dialog]")?.close();
+      prototypeToast("Cenário demonstrado: registros associados removidos e indicadores atualizados.");
+    }
+    if (action === "open-player-dialog") document.querySelector("[data-player-dialog]")?.showModal();
+    if (action === "close-player-dialog") document.querySelector("[data-player-dialog]")?.close();
+    if (action === "remove-player" || action === "save-player") {
+      document.querySelector("[data-player-dialog]")?.close();
+      prototypeToast(action === "remove-player" ? "Cenário visual: jogador removido do elenco." : "Cenário visual: perfil do jogador atualizado.");
+    }
+    if (action === "close-finalize") document.querySelector("[data-finalize-dialog]")?.close();
+    if (action === "confirm-finalize") {
+      if (prototypeState.scoreboardState === "incomplete") return;
+      document.querySelector("[data-finalize-dialog]")?.close();
+      prototypeState.reviewReady = true;
+      const finish = document.querySelector("[data-finalize-review]");
+      if (finish) { finish.disabled = true; finish.textContent = "REVISÃO FINALIZADA"; }
+      document.querySelector("[data-review-state]").textContent = "5/5 POVs REVISADOS";
+      const check = document.querySelector("[data-final-check]");
+      check.textContent = "REVISÃO FINALIZADA";
+      check.classList.add("is-done");
+      document.querySelector("[data-open-synthesis]").classList.remove("is-hidden");
+      prototypeToast("Revisão finalizada. A síntese está disponível.");
+    }
+  });
 
   window.addEventListener("hashchange", render);
   render();
