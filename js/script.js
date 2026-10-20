@@ -489,7 +489,7 @@
     return `<header class="dashboard-header">
       <a class="dashboard-logo-slot" href="${profile === "admin" ? "#usuarios" : "#dashboard"}" aria-label="${profile === "admin" ? "Ir para a administração" : "Ir para o dashboard"}"><img src="${assets.brandLogo}" alt="VOD Review"></a>
       <div class="dashboard-header__spacer"></div>
-      ${globalNavigation(active, profile)}
+      ${profile === "admin" ? "" : globalNavigation(active, profile)}
       <div class="dashboard-header__spacer dashboard-header__profile">
         <span class="dashboard-user-name">${userName}</span>
         <button class="dashboard-logout-button" type="button" data-logout data-profile="${profile}" aria-label="Sair da plataforma" title="Sair">
@@ -726,14 +726,53 @@
     </section>`;
   }
 
-  function adminShell({ title, description, actions = "", content }) {
+  const adminSections = [
+    { key: "visao-geral", label: "Visão geral", icon: "layout-dashboard", title: "VISÃO GERAL", description: "Resumo dos cadastros e das pendências que exigem atenção do administrador." },
+    { key: "equipes", label: "Equipes", icon: "shield", title: "EQUIPES", description: "Informações cadastrais de cada equipe e o treinador responsável por ela.", counter: "data-team-total" },
+    { key: "treinadores", label: "Treinadores", icon: "user-round-cog", title: "TREINADORES", description: "Contas de acesso dos treinadores vinculados às equipes cadastradas.", counter: "data-user-total" }
+  ];
+
+  function getAdminSection() {
+    const hashQuery = window.location.hash.includes("?") ? window.location.hash.split("?")[1] : "";
+    const requested = new URLSearchParams(hashQuery).get("secao");
+    return adminSections.some((section) => section.key === requested) ? requested : "visao-geral";
+  }
+
+  function adminSidebar(active) {
+    return `<aside class="admin-sidebar" aria-label="Navegação administrativa">
+      <span class="admin-sidebar__label">ADMINISTRAÇÃO</span>
+      <nav class="admin-sidebar__nav">
+        ${adminSections.map((section) => `<a class="admin-sidebar__item${section.key === active ? " is-active" : ""}" href="#usuarios?secao=${section.key}"${section.key === active ? ' aria-current="page"' : ""}><i data-lucide="${section.icon}" aria-hidden="true"></i><span>${section.label}</span>${section.counter ? `<b ${section.counter}>${section.key === "equipes" ? managedTeams.length : systemUsers.length}</b>` : ""}</a>`).join("")}
+      </nav>
+      <div class="admin-sidebar__scope">
+        <span><i data-lucide="lock-keyhole" aria-hidden="true"></i>ESCOPO DO ADMINISTRADOR</span>
+        <p>Cadastro de equipes e contas de treinadores. Painéis, partidas, estatísticas e revisões permanecem restritos aos treinadores responsáveis.</p>
+      </div>
+    </aside>`;
+  }
+
+  function adminPanel(section, active, actions, content) {
+    return `<section class="admin-panel" data-admin-panel="${section.key}" aria-labelledby="admin-title-${section.key}"${section.key === active ? "" : " hidden"}>
+      <header class="admin-panel__header">
+        <div>
+          <span class="admin-panel__breadcrumb">ADMINISTRAÇÃO <i aria-hidden="true">/</i> ${section.label.toLocaleUpperCase("pt-BR")}</span>
+          <h1 id="admin-title-${section.key}">${section.title}</h1>
+          <p>${section.description}</p>
+        </div>
+        <div class="admin-panel__actions">${actions}</div>
+      </header>
+      ${content}
+    </section>`;
+  }
+
+  function adminShell({ active, panels, dialogs }) {
     return `<section class="dashboard-screen module-screen admin-screen" data-screen="usuarios">
       ${dashboardHeader("users", "admin")}
-      <main class="admin-page">
-        ${actions ? `<div class="module-actionbar" aria-label="Ações administrativas">${actions}</div>` : ""}
-        <p class="admin-scope-notice"><strong>ESCOPO DO ADMINISTRADOR</strong><span>Cadastro de equipes e contas de treinadores. Painéis, partidas, estatísticas e revisões permanecem restritos aos treinadores responsáveis.</span></p>
-        ${content}
-      </main>
+      <div class="admin-layout">
+        ${adminSidebar(active)}
+        <main class="admin-page">${panels}</main>
+      </div>
+      ${dialogs}
       <div class="app-toast" role="status" aria-live="polite" data-toast></div>
     </section>`;
   }
@@ -761,23 +800,65 @@
     return managedTeams.map(teamRow).join("");
   }
 
+  function adminStats() {
+    const active = systemUsers.filter((user) => user.status === "ATIVO").length;
+    const percent = systemUsers.length ? Math.round((active / systemUsers.length) * 100) : 0;
+    return `<section class="module-stats" aria-label="Resumo administrativo"><article><span>EQUIPES CADASTRADAS</span><strong data-team-total>${managedTeams.length}</strong><small>Ativas e cadastros pendentes</small></article><article><span>TREINADORES</span><strong data-user-total>${systemUsers.length}</strong><small>Contas vinculadas a equipes</small></article><article><span>ACESSOS ATIVOS</span><strong data-user-active>${active}</strong><small data-user-active-detail>${percent}% dos treinadores</small></article></section>`;
+  }
+
+  function adminAttentionItems() {
+    const items = [
+      ...managedTeams.filter((team) => team.status !== "ATIVA").map((team) => ({ tone: "pending", title: team.name, detail: "Equipe sem treinador responsável vinculado", section: "equipes" })),
+      ...systemUsers.filter((user) => user.status !== "ATIVO").map((user) => ({ tone: "muted", title: user.name, detail: `Conta desativada · ${user.team}`, section: "treinadores" })),
+      ...systemUsers.filter((user) => user.status === "ATIVO" && user.access === "AINDA NÃO ACESSOU").map((user) => ({ tone: "progress", title: user.name, detail: "Conta criada, aguardando o primeiro acesso", section: "treinadores" }))
+    ];
+    if (!items.length) return '<p class="admin-empty">Nenhuma pendência no momento. Todas as equipes possuem treinador ativo.</p>';
+    return `<ul class="admin-list">${items.map((item) => `<li><span class="admin-list__dot admin-list__dot--${item.tone}" aria-hidden="true"></span><span class="admin-list__text"><strong>${item.title}</strong><small>${item.detail}</small></span><a class="admin-list__link" href="#usuarios?secao=${item.section}">VER</a></li>`).join("")}</ul>`;
+  }
+
+  function adminLinkItems() {
+    return `<ul class="admin-list">${managedTeams.map((team) => `<li><img src="${team.logo}" alt=""><span class="admin-list__text"><strong>${team.name}</strong><small>${team.coach}</small></span><span class="status-badge status-badge--${team.status === "ATIVA" ? "success" : "pending"}">${team.status}</span></li>`).join("")}</ul>`;
+  }
+
+  function adminTableCard({ label, hint, search, head, body, empty }) {
+    return `<section class="module-card admin-management-card">
+      <div class="module-toolbar"><div><span class="module-label">${label}</span><small>${hint}</small></div><label class="module-search"><span aria-hidden="true">⌕</span><input type="search" data-admin-search placeholder="${search}" aria-label="${search}"></label></div>
+      <div class="module-table-scroll"><table class="module-table"><thead><tr>${head.map((title) => `<th>${title}</th>`).join("")}</tr></thead>${body}</table></div>
+      <p class="admin-empty admin-empty--search" data-admin-search-empty hidden>${empty}</p>
+    </section>`;
+  }
+
   function usersScreen() {
-    return adminShell({
-      title: "GESTÃO ADMINISTRATIVA",
-      description: "Cadastre equipes e gerencie somente as contas dos treinadores vinculados a elas.",
-      actions: '<button class="module-secondary" type="button" data-open-team-dialog>NOVA EQUIPE</button><button class="module-primary" type="button" data-open-user-dialog>NOVO TREINADOR</button>',
-      content: `<section class="module-stats" aria-label="Resumo administrativo"><article><span>EQUIPES CADASTRADAS</span><strong data-team-total>3</strong><small>Ativas e cadastros pendentes</small></article><article><span>TREINADORES</span><strong data-user-total>3</strong><small>Contas vinculadas a equipes</small></article><article><span>ACESSOS ATIVOS</span><strong data-user-active>2</strong><small data-user-active-detail>67% dos treinadores</small></article></section>
-        <section class="module-card admin-management-card">
-          <div class="module-toolbar"><div><span class="module-label">EQUIPES CADASTRADAS</span><small>Informações cadastrais e treinador responsável</small></div></div>
-          <div class="module-table-scroll"><table class="module-table"><thead><tr><th>EQUIPE</th><th>REGIÃO</th><th>TREINADOR</th><th>STATUS</th><th>AÇÕES</th></tr></thead><tbody data-teams-body>${teamRows()}</tbody></table></div>
-        </section>
-        <section class="module-card admin-management-card">
-          <div class="module-toolbar"><div><span class="module-label">CONTAS DE TREINADORES</span><small>O administrador não possui acesso aos dados competitivos destas equipes</small></div><label class="module-search"><span aria-hidden="true">⌕</span><input type="search" placeholder="Buscar treinador ou equipe" aria-label="Buscar treinador"></label></div>
-          <div class="module-table-scroll"><table class="module-table"><thead><tr><th>TREINADOR</th><th>EQUIPE VINCULADA</th><th>STATUS</th><th>ÚLTIMO ACESSO</th><th>AÇÕES</th></tr></thead><tbody data-users-body>${userRows()}</tbody></table></div>
-        </section>
-        <dialog class="module-dialog" data-team-dialog><form method="dialog" data-team-form><header><div><span class="module-label">CADASTRO ADMINISTRATIVO</span><h2 data-team-dialog-title>NOVA EQUIPE</h2></div><button type="button" data-close-team-dialog aria-label="Fechar">×</button></header><div class="dialog-fields"><label><span>NOME DA EQUIPE</span><input name="name" required placeholder="Nome da equipe"></label><label><span>TAG / SIGLA</span><input name="tag" required maxlength="4" placeholder="TAG"></label><label><span>REGIÃO / PAÍS</span><select name="region"><option>BRASIL</option><option>AMÉRICA DO SUL</option><option>AMÉRICA DO NORTE</option><option>EUROPA</option></select></label><label><span>TREINADOR RESPONSÁVEL</span><select name="coach" required>${systemUsers.map((user) => `<option>${user.name}</option>`).join("")}</select></label><p class="module-notice"><strong>RN001:</strong> a equipe só é apresentada como ativa após indicar um treinador responsável.</p></div><footer><button class="module-secondary" type="button" data-close-team-dialog>CANCELAR</button><button class="module-primary" type="submit">SALVAR EQUIPE VINCULADA</button></footer></form></dialog>
-        <dialog class="module-dialog" data-user-dialog><form method="dialog" data-user-form><header><div><span class="module-label">CONTA DE TREINADOR</span><h2 data-user-dialog-title>NOVO TREINADOR</h2></div><button type="button" data-close-user-dialog aria-label="Fechar">×</button></header><div class="dialog-fields"><label><span>NOME COMPLETO</span><input name="name" required placeholder="Nome do treinador"></label><label><span>E-MAIL</span><input name="email" type="email" required placeholder="treinador@equipe.gg"></label><label><span>EQUIPE VINCULADA</span><select name="team">${managedTeams.map((team) => `<option>${team.name}</option>`).join("")}</select></label></div><footer><button class="module-secondary" type="button" data-close-user-dialog>CANCELAR</button><button class="module-primary" type="submit">SALVAR TREINADOR</button></footer></form></dialog>`
-    });
+    const active = getAdminSection();
+    const [overview, teams, coaches] = adminSections;
+    const newTeamButton = '<button class="module-secondary" type="button" data-open-team-dialog>NOVA EQUIPE</button>';
+    const newUserButton = '<button class="module-primary" type="button" data-open-user-dialog>NOVO TREINADOR</button>';
+    const panels = [
+      adminPanel(overview, active, newTeamButton + newUserButton, `${adminStats()}
+        <div class="admin-overview-grid">
+          <section class="module-card admin-overview-card"><header><div><span class="module-label">REQUER ATENÇÃO</span><small>Equipes sem responsável e contas sem acesso</small></div></header><div data-admin-attention>${adminAttentionItems()}</div></section>
+          <section class="module-card admin-overview-card"><header><div><span class="module-label">VÍNCULOS EQUIPE · TREINADOR</span><small>Responsável atual por equipe</small></div><a class="admin-list__link" href="#usuarios?secao=equipes">VER EQUIPES</a></header><div data-admin-links>${adminLinkItems()}</div></section>
+        </div>`),
+      adminPanel(teams, active, newTeamButton.replace("module-secondary", "module-primary"), adminTableCard({
+        label: "EQUIPES CADASTRADAS",
+        hint: "Informações cadastrais e treinador responsável",
+        search: "Buscar equipe, tag ou treinador",
+        head: ["EQUIPE", "REGIÃO", "TREINADOR", "STATUS", "AÇÕES"],
+        body: `<tbody data-teams-body>${teamRows()}</tbody>`,
+        empty: "Nenhuma equipe encontrada para a busca."
+      })),
+      adminPanel(coaches, active, newUserButton, adminTableCard({
+        label: "CONTAS DE TREINADORES",
+        hint: "O administrador não possui acesso aos dados competitivos destas equipes",
+        search: "Buscar treinador ou equipe",
+        head: ["TREINADOR", "EQUIPE VINCULADA", "STATUS", "ÚLTIMO ACESSO", "AÇÕES"],
+        body: `<tbody data-users-body>${userRows()}</tbody>`,
+        empty: "Nenhum treinador encontrado para a busca."
+      }))
+    ].join("");
+    const dialogs = `<dialog class="module-dialog" data-team-dialog><form method="dialog" data-team-form><header><div><span class="module-label">CADASTRO ADMINISTRATIVO</span><h2 data-team-dialog-title>NOVA EQUIPE</h2></div><button type="button" data-close-team-dialog aria-label="Fechar">×</button></header><div class="dialog-fields"><label><span>NOME DA EQUIPE</span><input name="name" required placeholder="Nome da equipe"></label><label><span>TAG / SIGLA</span><input name="tag" required maxlength="4" placeholder="TAG"></label><label><span>REGIÃO / PAÍS</span><select name="region"><option>BRASIL</option><option>AMÉRICA DO SUL</option><option>AMÉRICA DO NORTE</option><option>EUROPA</option></select></label><label><span>TREINADOR RESPONSÁVEL</span><select name="coach" required>${systemUsers.map((user) => `<option>${user.name}</option>`).join("")}</select></label><p class="module-notice"><strong>RN001:</strong> a equipe só é apresentada como ativa após indicar um treinador responsável.</p></div><footer><button class="module-secondary" type="button" data-close-team-dialog>CANCELAR</button><button class="module-primary" type="submit">SALVAR EQUIPE VINCULADA</button></footer></form></dialog>
+      <dialog class="module-dialog" data-user-dialog><form method="dialog" data-user-form><header><div><span class="module-label">CONTA DE TREINADOR</span><h2 data-user-dialog-title>NOVO TREINADOR</h2></div><button type="button" data-close-user-dialog aria-label="Fechar">×</button></header><div class="dialog-fields"><label><span>NOME COMPLETO</span><input name="name" required placeholder="Nome do treinador"></label><label><span>E-MAIL</span><input name="email" type="email" required placeholder="treinador@equipe.gg"></label><label><span>EQUIPE VINCULADA</span><select name="team">${managedTeams.map((team) => `<option>${team.name}</option>`).join("")}</select></label></div><footer><button class="module-secondary" type="button" data-close-user-dialog>CANCELAR</button><button class="module-primary" type="submit">SALVAR TREINADOR</button></footer></form></dialog>`;
+    return adminShell({ active, panels, dialogs });
   }
 
   function reviewsScreen() {
@@ -1089,17 +1170,15 @@
     const teamDialog = document.querySelector("[data-team-dialog]");
     const teamForm = document.querySelector("[data-team-form]");
     const teamsBody = document.querySelector("[data-teams-body]");
-    const adminTabs = document.querySelectorAll("[data-admin-tab]");
-    const adminPanels = document.querySelectorAll("[data-admin-panel]");
-    adminTabs.forEach((tab) => tab.addEventListener("click", () => {
-      const target = tab.dataset.adminTab;
-      adminTabs.forEach((item) => {
-        const isSelected = item === tab;
-        item.classList.toggle("is-active", isSelected);
-        item.setAttribute("aria-selected", String(isSelected));
-      });
-      adminPanels.forEach((panel) => { panel.hidden = panel.dataset.adminPanel !== target; });
-    }));
+    const refreshAdminOverview = () => {
+      const attention = document.querySelector("[data-admin-attention]");
+      const links = document.querySelector("[data-admin-links]");
+      if (attention) attention.innerHTML = adminAttentionItems();
+      if (links) links.innerHTML = adminLinkItems();
+      const coachSelect = teamForm && teamForm.elements.coach;
+      if (coachSelect) coachSelect.innerHTML = systemUsers.map((user) => `<option>${user.name}</option>`).join("");
+      renderActionIcons();
+    };
     const refreshUserStats = () => {
       const total = systemUsers.length;
       const active = systemUsers.filter((user) => user.status === "ATIVO").length;
@@ -1109,6 +1188,7 @@
       totalOutputs.forEach((output) => { output.textContent = String(total); });
       if (activeOutput) activeOutput.textContent = String(active);
       if (detailOutput) detailOutput.textContent = `${Math.round((active / total) * 100)}% dos treinadores`;
+      refreshAdminOverview();
     };
     const openUserEditor = (index) => {
       const user = systemUsers[index];
@@ -1145,13 +1225,15 @@
     }));
     document.querySelectorAll("[data-close-user-dialog]").forEach((button) => button.addEventListener("click", () => userDialog && userDialog.close()));
     document.querySelectorAll("[data-user-row]").forEach(bindUserRowActions);
-    const userSearch = document.querySelector('.module-search input[type="search"]');
-    if (userSearch) userSearch.addEventListener("input", () => {
-      const term = userSearch.value.trim().toLocaleLowerCase("pt-BR");
-      usersBody.querySelectorAll("[data-user-row]").forEach((row) => {
+    document.querySelectorAll("[data-admin-search]").forEach((search) => search.addEventListener("input", () => {
+      const card = search.closest(".admin-management-card");
+      const term = search.value.trim().toLocaleLowerCase("pt-BR");
+      const rows = card.querySelectorAll("tbody tr");
+      rows.forEach((row) => {
         row.hidden = !row.textContent.toLocaleLowerCase("pt-BR").includes(term);
       });
-    });
+      card.querySelector("[data-admin-search-empty]").hidden = [...rows].some((row) => !row.hidden);
+    }));
     if (userForm) userForm.addEventListener("submit", (event) => {
       event.preventDefault();
       const index = userForm.dataset.userIndex === undefined ? -1 : Number(userForm.dataset.userIndex);
@@ -1193,6 +1275,7 @@
         teamsBody.innerHTML = teamRows();
         teamsBody.querySelectorAll("[data-team-row]").forEach(bindTeamRowActions);
       }
+      refreshAdminOverview();
       showToast(index >= 0 ? "Treinador atualizado." : "Treinador cadastrado e vinculado.");
     });
 
@@ -1245,6 +1328,7 @@
       const teamSelect = userForm && userForm.elements.team;
       if (teamSelect) teamSelect.innerHTML = managedTeams.map((item) => `<option>${item.name}</option>`).join("");
       teamDialog.close();
+      refreshAdminOverview();
       showToast(index >= 0 ? "Equipe atualizada." : "Equipe cadastrada. Agora vincule o treinador.");
     });
 
