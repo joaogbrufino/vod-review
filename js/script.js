@@ -847,7 +847,8 @@
       }))
     ].join("");
     const dialogs = `<dialog class="module-dialog" data-team-dialog><form method="dialog" data-team-form><header><div><span class="module-label">CADASTRO ADMINISTRATIVO</span><h2 data-team-dialog-title>NOVA EQUIPE</h2></div><button type="button" data-close-team-dialog aria-label="Fechar">×</button></header><div class="dialog-fields"><label><span>NOME DA EQUIPE</span><input name="name" required placeholder="Nome da equipe"></label><label><span>TAG / SIGLA</span><input name="tag" required maxlength="4" placeholder="TAG"></label><label><span>REGIÃO / PAÍS</span><select name="region"><option>BRASIL</option><option>AMÉRICA DO SUL</option><option>AMÉRICA DO NORTE</option><option>EUROPA</option></select></label><label><span>TREINADOR RESPONSÁVEL</span><select name="coach" required>${systemUsers.map((user) => `<option>${user.name}</option>`).join("")}</select></label><p class="module-notice"><strong>RN001:</strong> a equipe só é apresentada como ativa após indicar um treinador responsável.</p></div><footer><button class="module-secondary" type="button" data-close-team-dialog>CANCELAR</button><button class="module-primary" type="submit">SALVAR EQUIPE VINCULADA</button></footer></form></dialog>
-      <dialog class="module-dialog" data-user-dialog><form method="dialog" data-user-form><header><div><span class="module-label">CONTA DE TREINADOR</span><h2 data-user-dialog-title>NOVO TREINADOR</h2></div><button type="button" data-close-user-dialog aria-label="Fechar">×</button></header><div class="dialog-fields"><label><span>NOME COMPLETO</span><input name="name" required placeholder="Nome do treinador"></label><label><span>E-MAIL</span><input name="email" type="email" required placeholder="treinador@equipe.gg"></label><div class="dialog-fields__pair" data-password-fields><label><span>SENHA INICIAL</span><input name="password" type="password" autocomplete="new-password" placeholder="Senha inicial"></label><label><span>CONFIRMAR SENHA</span><input name="passwordConfirm" type="password" autocomplete="new-password" placeholder="Repita a senha"></label><p class="dialog-fields__hint" data-password-hint hidden>Deixe em branco para manter a senha atual.</p></div><label><span>EQUIPE VINCULADA</span><select name="team" required><option value="" disabled selected>Selecione a equipe</option>${managedTeams.map((team) => `<option>${team.name}</option>`).join("")}</select></label></div><footer><button class="module-secondary" type="button" data-close-user-dialog>CANCELAR</button><button class="module-primary" type="submit" data-user-submit>SALVAR TREINADOR</button></footer></form></dialog>`;
+      <dialog class="module-dialog" data-user-dialog><form method="dialog" data-user-form><header><div><span class="module-label">CONTA DE TREINADOR</span><h2 data-user-dialog-title>NOVO TREINADOR</h2></div><button type="button" data-close-user-dialog aria-label="Fechar">×</button></header><div class="dialog-fields"><label><span>NOME COMPLETO</span><input name="name" required placeholder="Nome do treinador"></label><label><span>E-MAIL</span><input name="email" type="email" required placeholder="treinador@equipe.gg"></label><div class="dialog-fields__pair" data-password-fields><label><span>SENHA INICIAL</span><input name="password" type="password" autocomplete="new-password" placeholder="Senha inicial"></label><label><span>CONFIRMAR SENHA</span><input name="passwordConfirm" type="password" autocomplete="new-password" placeholder="Repita a senha"></label><p class="dialog-fields__hint" data-password-hint hidden>Deixe em branco para manter a senha atual.</p></div><label><span>EQUIPE VINCULADA</span><select name="team" required><option value="" disabled selected>Selecione a equipe</option>${managedTeams.map((team) => `<option>${team.name}</option>`).join("")}</select></label></div><footer><button class="module-secondary" type="button" data-close-user-dialog>CANCELAR</button><button class="module-primary" type="submit" data-user-submit>SALVAR TREINADOR</button></footer></form></dialog>
+        <dialog class="module-dialog confirm-dialog" data-confirm-dialog aria-labelledby="confirm-dialog-title"><div class="confirm-dialog__body"><span class="module-label" data-confirm-eyebrow></span><h2 id="confirm-dialog-title" data-confirm-title></h2><p data-confirm-message></p><dl class="confirm-dialog__details" data-confirm-details></dl></div><footer><button class="module-secondary" type="button" data-confirm-cancel>CANCELAR</button><button class="module-primary" type="button" data-confirm-ok>CONFIRMAR</button></footer></dialog>`;
     return adminShell({ active, panels, dialogs });
   }
 
@@ -1160,6 +1161,39 @@
     const teamDialog = document.querySelector("[data-team-dialog]");
     const teamForm = document.querySelector("[data-team-form]");
     const teamsBody = document.querySelector("[data-teams-body]");
+    const confirmDialog = document.querySelector("[data-confirm-dialog]");
+    let pendingConfirm = null;
+    const confirmAction = ({ eyebrow, title, message, details = [], confirmLabel, tone = "primary", onConfirm }) => {
+      if (!confirmDialog) { onConfirm(); return; }
+      pendingConfirm = onConfirm;
+      confirmDialog.querySelector("[data-confirm-eyebrow]").textContent = eyebrow;
+      confirmDialog.querySelector("[data-confirm-title]").textContent = title;
+      confirmDialog.querySelector("[data-confirm-message]").textContent = message;
+      const list = confirmDialog.querySelector("[data-confirm-details]");
+      list.replaceChildren(...details.map(([label, value]) => {
+        const row = document.createElement("div");
+        const term = document.createElement("dt");
+        const description = document.createElement("dd");
+        term.textContent = label;
+        description.textContent = value;
+        row.append(term, description);
+        return row;
+      }));
+      const ok = confirmDialog.querySelector("[data-confirm-ok]");
+      ok.textContent = confirmLabel;
+      ok.classList.toggle("confirm-dialog__danger", tone === "danger");
+      confirmDialog.showModal();
+    };
+    if (confirmDialog) {
+      confirmDialog.querySelector("[data-confirm-cancel]").addEventListener("click", () => confirmDialog.close());
+      confirmDialog.querySelector("[data-confirm-ok]").addEventListener("click", () => {
+        const proceed = pendingConfirm;
+        pendingConfirm = null;
+        confirmDialog.close();
+        if (proceed) proceed();
+      });
+      confirmDialog.addEventListener("close", () => { pendingConfirm = null; });
+    }
     const refreshAdminOverview = () => {
       const attention = document.querySelector("[data-admin-attention]");
       const links = document.querySelector("[data-admin-links]");
@@ -1225,17 +1259,31 @@
     const bindUserRowActions = (row) => {
       const index = Number(row.dataset.userIndex);
       row.querySelector("[data-edit-user]").addEventListener("click", () => openUserEditor(index));
-      row.querySelector("[data-toggle-user]").addEventListener("click", (event) => {
+      const toggleButton = row.querySelector("[data-toggle-user]");
+      toggleButton.addEventListener("click", () => {
         const status = row.querySelector("[data-user-status]");
         const activating = status.textContent === "INATIVO";
-        systemUsers[index].status = activating ? "ATIVO" : "INATIVO";
-        status.textContent = systemUsers[index].status;
-        status.className = `status-badge status-badge--${activating ? "success" : "muted"}`;
-        const toggleLabel = `${activating ? "Desativar" : "Ativar"} treinador`;
-        event.currentTarget.setAttribute("aria-label", toggleLabel);
-        event.currentTarget.title = toggleLabel;
-        refreshUserStats();
-        showToast(`Usuário ${activating ? "ativado" : "desativado"}.`);
+        const user = systemUsers[index];
+        confirmAction({
+          eyebrow: activating ? "REATIVAR ACESSO" : "DESATIVAR ACESSO",
+          title: `${activating ? "Ativar" : "Desativar"} ${user.name}?`,
+          message: activating
+            ? "O treinador volta a ter acesso à plataforma com a conta vinculada à equipe."
+            : "O treinador perde o acesso à plataforma até ser reativado. Os dados da equipe não são alterados.",
+          details: [["Equipe", user.team], ["Status atual", status.textContent], ["Novo status", activating ? "ATIVO" : "INATIVO"]],
+          confirmLabel: activating ? "ATIVAR CONTA" : "DESATIVAR CONTA",
+          tone: activating ? "primary" : "danger",
+          onConfirm: () => {
+            systemUsers[index].status = activating ? "ATIVO" : "INATIVO";
+            status.textContent = systemUsers[index].status;
+            status.className = `status-badge status-badge--${activating ? "success" : "muted"}`;
+            const toggleLabel = `${activating ? "Desativar" : "Ativar"} treinador`;
+            toggleButton.setAttribute("aria-label", toggleLabel);
+            toggleButton.title = toggleLabel;
+            refreshUserStats();
+            showToast(`Usuário ${activating ? "ativado" : "desativado"}.`);
+          }
+        });
       });
     };
     document.querySelectorAll("[data-open-user-dialog]").forEach((button) => button.addEventListener("click", () => {
@@ -1260,8 +1308,7 @@
       });
       card.querySelector("[data-admin-search-empty]").hidden = [...rows].some((row) => !row.hidden);
     }));
-    if (userForm) userForm.addEventListener("submit", (event) => {
-      event.preventDefault();
+    const saveUser = () => {
       const index = userForm.dataset.userIndex === undefined ? -1 : Number(userForm.dataset.userIndex);
       const previousTeamName = index >= 0 ? systemUsers[index].team : "";
       const user = {
@@ -1304,6 +1351,25 @@
       }
       refreshAdminOverview();
       showToast(index >= 0 ? "Treinador atualizado." : "Treinador cadastrado e vinculado.");
+    };
+    if (userForm) userForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const isEdit = userForm.dataset.userIndex !== undefined;
+      confirmAction({
+        eyebrow: isEdit ? "EDITAR TREINADOR" : "CRIAR CONTA DE TREINADOR",
+        title: isEdit ? "Salvar alterações?" : "Criar conta de treinador?",
+        message: isEdit
+          ? "As alterações valem imediatamente para o treinador e para a equipe vinculada."
+          : "A conta será criada e vinculada à equipe selecionada.",
+        details: [
+          ["Nome", userForm.elements.name.value.trim()],
+          ["E-mail", userForm.elements.email.value.trim()],
+          ["Equipe vinculada", userForm.elements.team.value],
+          ["Senha inicial", userForm.elements.password.value ? "Definida" : "Não definida"]
+        ],
+        confirmLabel: isEdit ? "SALVAR ALTERAÇÕES" : "CRIAR CONTA",
+        onConfirm: saveUser
+      });
     });
 
     const openTeamEditor = (index) => {
@@ -1330,8 +1396,7 @@
       teamDialog.showModal();
     }));
     document.querySelectorAll("[data-close-team-dialog]").forEach((button) => button.addEventListener("click", () => teamDialog && teamDialog.close()));
-    if (teamForm) teamForm.addEventListener("submit", (event) => {
-      event.preventDefault();
+    const saveTeam = () => {
       const index = teamForm.dataset.teamIndex === undefined ? -1 : Number(teamForm.dataset.teamIndex);
       const previousName = index >= 0 ? managedTeams[index].name : "";
       const team = {
@@ -1357,6 +1422,23 @@
       teamDialog.close();
       refreshAdminOverview();
       showToast(index >= 0 ? "Equipe atualizada." : "Equipe cadastrada. Agora vincule o treinador.");
+    };
+    if (teamForm) teamForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const isEdit = teamForm.dataset.teamIndex !== undefined;
+      confirmAction({
+        eyebrow: isEdit ? "EDITAR EQUIPE" : "CADASTRAR EQUIPE",
+        title: isEdit ? "Salvar alterações da equipe?" : "Cadastrar equipe?",
+        message: "A equipe só aparece como ativa depois de vinculada a um treinador responsável.",
+        details: [
+          ["Nome", teamForm.elements.name.value.trim().toUpperCase()],
+          ["Tag", teamForm.elements.tag.value.trim().toUpperCase()],
+          ["Região", teamForm.elements.region.value],
+          ["Treinador responsável", teamForm.elements.coach.value]
+        ],
+        confirmLabel: isEdit ? "SALVAR ALTERAÇÕES" : "CADASTRAR EQUIPE",
+        onConfirm: saveTeam
+      });
     });
 
     document.querySelectorAll("[data-recording-input]").forEach((input) => input.addEventListener("change", () => {
