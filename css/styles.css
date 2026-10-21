@@ -5447,7 +5447,10 @@ select:focus-visible {
 .module-table__actions button,
 .review-note-list button,
 .recording-card footer > button { border: 0; background: transparent; color: var(--muted); font: 700 var(--type-micro) var(--font-ui); cursor: pointer; }
-.module-table__actions button + button { margin-left: 14px; }
+.module-table__actions button { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; vertical-align: middle; line-height: 1; }
+.module-table__actions .ui-action-icon { width: 16px; height: 16px; margin: 0; vertical-align: middle; }
+.module-table__actions button + button { margin-left: 8px; }
+.admin-management-card .module-table th:last-child { text-align: right; }
 .module-table__actions button:hover,
 .review-note-list button:hover { color: var(--green); }
 
@@ -5492,6 +5495,13 @@ select:focus-visible {
 .sync-overview select,
 .review-notes select,
 .review-notes textarea { width: 100%; min-height: 42px; padding: 0 12px; border: 1px solid var(--border); outline: 0; background: #0c0c0c; color: var(--text); font: var(--type-caption) var(--font-ui); }
+
+.dialog-fields__pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; }
+.dialog-fields__pair[hidden] { display: none; }
+.dialog-fields__hint { grid-column: 1 / -1; margin: -4px 0 0; color: var(--muted); font-size: var(--type-micro); }
+@media (max-width: 560px) {
+  .dialog-fields__pair { grid-template-columns: minmax(0, 1fr); }
+}
 
 .review-session-list { display: grid; gap: 12px; }
 .review-session-card { display: grid; grid-template-columns: 170px minmax(320px, 1fr) minmax(180px, 260px) 130px; align-items: center; gap: 22px; min-height: 118px; padding: 18px 20px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); }
