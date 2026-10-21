@@ -727,7 +727,6 @@
   }
 
   const adminSections = [
-    { key: "visao-geral", label: "Visão geral", icon: "layout-dashboard", title: "VISÃO GERAL", description: "Resumo dos cadastros e das pendências que exigem atenção do administrador." },
     { key: "equipes", label: "Equipes", icon: "shield", title: "EQUIPES", description: "Informações cadastrais de cada equipe e o treinador responsável por ela.", counter: "data-team-total" },
     { key: "treinadores", label: "Treinadores", icon: "user-round-cog", title: "TREINADORES", description: "Contas de acesso dos treinadores vinculados às equipes cadastradas.", counter: "data-user-total" }
   ];
@@ -735,7 +734,7 @@
   function getAdminSection() {
     const hashQuery = window.location.hash.includes("?") ? window.location.hash.split("?")[1] : "";
     const requested = new URLSearchParams(hashQuery).get("secao");
-    return adminSections.some((section) => section.key === requested) ? requested : "visao-geral";
+    return adminSections.some((section) => section.key === requested) ? requested : "equipes";
   }
 
   function adminSidebar(active) {
@@ -744,10 +743,6 @@
       <nav class="admin-sidebar__nav">
         ${adminSections.map((section) => `<a class="admin-sidebar__item${section.key === active ? " is-active" : ""}" href="#usuarios?secao=${section.key}"${section.key === active ? ' aria-current="page"' : ""}><i data-lucide="${section.icon}" aria-hidden="true"></i><span>${section.label}</span>${section.counter ? `<b ${section.counter}>${section.key === "equipes" ? managedTeams.length : systemUsers.length}</b>` : ""}</a>`).join("")}
       </nav>
-      <div class="admin-sidebar__scope">
-        <span><i data-lucide="lock-keyhole" aria-hidden="true"></i>ESCOPO DO ADMINISTRADOR</span>
-        <p>Cadastro de equipes e contas de treinadores. Painéis, partidas, estatísticas e revisões permanecem restritos aos treinadores responsáveis.</p>
-      </div>
     </aside>`;
   }
 
@@ -783,7 +778,7 @@
       <td><span class="user-team"><strong>${user.team}</strong><small>TREINADOR RESPONSÁVEL</small></span></td>
       <td><span class="status-badge status-badge--${user.status === "ATIVO" ? "success" : "muted"}" data-user-status>${user.status}</span></td>
       <td>${user.access}</td>
-      <td class="module-table__actions"><button type="button" data-edit-user="${index}">EDITAR</button><button type="button" data-toggle-user>${user.status === "ATIVO" ? "DESATIVAR" : "ATIVAR"}</button></td>
+      <td class="module-table__actions"><button type="button" data-edit-user="${index}" aria-label="Editar treinador" title="Editar treinador"></button><button type="button" data-toggle-user aria-label="${user.status === "ATIVO" ? "Desativar" : "Ativar"} treinador" title="${user.status === "ATIVO" ? "Desativar" : "Ativar"} treinador"></button></td>
     </tr>`;
   }
 
@@ -793,7 +788,7 @@
 
   function teamRow(team, index) {
     const isActive = team.status === "ATIVA";
-    return `<tr data-team-row data-team-index="${index}"><td><span class="managed-team"><img src="${team.logo}" alt=""><span><strong>${team.name}</strong><small>${team.tag}</small></span></span></td><td>${team.region}</td><td><span class="user-team"><strong>${team.coach}</strong><small>${isActive ? "CONTA DE TREINADOR" : "CRIE E VINCULE UMA CONTA"}</small></span></td><td><span class="status-badge status-badge--${isActive ? "success" : "pending"}">${team.status}</span></td><td class="module-table__actions"><button type="button" data-edit-team="${index}">EDITAR</button></td></tr>`;
+    return `<tr data-team-row data-team-index="${index}"><td><span class="managed-team"><img src="${team.logo}" alt=""><span><strong>${team.name}</strong><small>${team.tag}</small></span></span></td><td>${team.region}</td><td><span class="user-team"><strong>${team.coach}</strong><small>${isActive ? "CONTA DE TREINADOR" : "CRIE E VINCULE UMA CONTA"}</small></span></td><td><span class="status-badge status-badge--${isActive ? "success" : "pending"}">${team.status}</span></td><td class="module-table__actions"><button type="button" data-edit-team="${index}" aria-label="Editar equipe" title="Editar equipe"></button></td></tr>`;
   }
 
   function teamRows() {
@@ -830,15 +825,10 @@
 
   function usersScreen() {
     const active = getAdminSection();
-    const [overview, teams, coaches] = adminSections;
+    const [teams, coaches] = adminSections;
     const newTeamButton = '<button class="module-secondary" type="button" data-open-team-dialog>NOVA EQUIPE</button>';
     const newUserButton = '<button class="module-primary" type="button" data-open-user-dialog>NOVO TREINADOR</button>';
     const panels = [
-      adminPanel(overview, active, newTeamButton + newUserButton, `${adminStats()}
-        <div class="admin-overview-grid">
-          <section class="module-card admin-overview-card"><header><div><span class="module-label">REQUER ATENÇÃO</span><small>Equipes sem responsável e contas sem acesso</small></div></header><div data-admin-attention>${adminAttentionItems()}</div></section>
-          <section class="module-card admin-overview-card"><header><div><span class="module-label">VÍNCULOS EQUIPE · TREINADOR</span><small>Responsável atual por equipe</small></div><a class="admin-list__link" href="#usuarios?secao=equipes">VER EQUIPES</a></header><div data-admin-links>${adminLinkItems()}</div></section>
-        </div>`),
       adminPanel(teams, active, newTeamButton.replace("module-secondary", "module-primary"), adminTableCard({
         label: "EQUIPES CADASTRADAS",
         hint: "Informações cadastrais e treinador responsável",
@@ -857,7 +847,7 @@
       }))
     ].join("");
     const dialogs = `<dialog class="module-dialog" data-team-dialog><form method="dialog" data-team-form><header><div><span class="module-label">CADASTRO ADMINISTRATIVO</span><h2 data-team-dialog-title>NOVA EQUIPE</h2></div><button type="button" data-close-team-dialog aria-label="Fechar">×</button></header><div class="dialog-fields"><label><span>NOME DA EQUIPE</span><input name="name" required placeholder="Nome da equipe"></label><label><span>TAG / SIGLA</span><input name="tag" required maxlength="4" placeholder="TAG"></label><label><span>REGIÃO / PAÍS</span><select name="region"><option>BRASIL</option><option>AMÉRICA DO SUL</option><option>AMÉRICA DO NORTE</option><option>EUROPA</option></select></label><label><span>TREINADOR RESPONSÁVEL</span><select name="coach" required>${systemUsers.map((user) => `<option>${user.name}</option>`).join("")}</select></label><p class="module-notice"><strong>RN001:</strong> a equipe só é apresentada como ativa após indicar um treinador responsável.</p></div><footer><button class="module-secondary" type="button" data-close-team-dialog>CANCELAR</button><button class="module-primary" type="submit">SALVAR EQUIPE VINCULADA</button></footer></form></dialog>
-      <dialog class="module-dialog" data-user-dialog><form method="dialog" data-user-form><header><div><span class="module-label">CONTA DE TREINADOR</span><h2 data-user-dialog-title>NOVO TREINADOR</h2></div><button type="button" data-close-user-dialog aria-label="Fechar">×</button></header><div class="dialog-fields"><label><span>NOME COMPLETO</span><input name="name" required placeholder="Nome do treinador"></label><label><span>E-MAIL</span><input name="email" type="email" required placeholder="treinador@equipe.gg"></label><label><span>EQUIPE VINCULADA</span><select name="team">${managedTeams.map((team) => `<option>${team.name}</option>`).join("")}</select></label></div><footer><button class="module-secondary" type="button" data-close-user-dialog>CANCELAR</button><button class="module-primary" type="submit">SALVAR TREINADOR</button></footer></form></dialog>`;
+      <dialog class="module-dialog" data-user-dialog><form method="dialog" data-user-form><header><div><span class="module-label">CONTA DE TREINADOR</span><h2 data-user-dialog-title>NOVO TREINADOR</h2></div><button type="button" data-close-user-dialog aria-label="Fechar">×</button></header><div class="dialog-fields"><label><span>NOME COMPLETO</span><input name="name" required placeholder="Nome do treinador"></label><label><span>E-MAIL</span><input name="email" type="email" required placeholder="treinador@equipe.gg"></label><div class="dialog-fields__pair" data-password-fields><label><span>SENHA INICIAL</span><input name="password" type="password" autocomplete="new-password" placeholder="Senha inicial"></label><label><span>CONFIRMAR SENHA</span><input name="passwordConfirm" type="password" autocomplete="new-password" placeholder="Repita a senha"></label><p class="dialog-fields__hint" data-password-hint hidden>Deixe em branco para manter a senha atual.</p></div><label><span>EQUIPE VINCULADA</span><select name="team" required><option value="" disabled selected>Selecione a equipe</option>${managedTeams.map((team) => `<option>${team.name}</option>`).join("")}</select></label></div><footer><button class="module-secondary" type="button" data-close-user-dialog>CANCELAR</button><button class="module-primary" type="submit" data-user-submit>SALVAR TREINADOR</button></footer></form></dialog>`;
     return adminShell({ active, panels, dialogs });
   }
 
@@ -1190,6 +1180,36 @@
       if (detailOutput) detailOutput.textContent = `${Math.round((active / total) * 100)}% dos treinadores`;
       refreshAdminOverview();
     };
+    const setPasswordFieldsEnabled = (enabled, editing = false) => {
+      const fields = document.querySelector("[data-password-fields]");
+      if (!fields || !userForm) return;
+      const { password, passwordConfirm } = userForm.elements;
+      fields.hidden = !enabled;
+      password.disabled = !enabled;
+      passwordConfirm.disabled = !enabled;
+      password.required = enabled && !editing;
+      passwordConfirm.required = enabled && !editing;
+      password.value = "";
+      passwordConfirm.value = "";
+      passwordConfirm.setCustomValidity("");
+      password.closest("label").querySelector("span").textContent = editing ? "NOVA SENHA" : "SENHA INICIAL";
+      passwordConfirm.closest("label").querySelector("span").textContent = editing ? "CONFIRMAR NOVA SENHA" : "CONFIRMAR SENHA";
+      document.querySelector("[data-password-hint]").hidden = !editing;
+    };
+    const checkPasswordMatch = () => {
+      if (!userForm || userForm.elements.password.disabled) return;
+      const { password, passwordConfirm } = userForm.elements;
+      passwordConfirm.setCustomValidity(password.value === passwordConfirm.value ? "" : "As senhas não coincidem");
+    };
+    const syncUserSubmit = () => {
+      const submit = document.querySelector("[data-user-submit]");
+      if (submit && userForm) submit.disabled = !userForm.elements.team.value;
+    };
+    if (userForm) {
+      userForm.elements.password.addEventListener("input", checkPasswordMatch);
+      userForm.elements.passwordConfirm.addEventListener("input", checkPasswordMatch);
+      userForm.elements.team.addEventListener("change", syncUserSubmit);
+    }
     const openUserEditor = (index) => {
       const user = systemUsers[index];
       if (!user || !userForm || !userDialog) return;
@@ -1197,6 +1217,8 @@
       userForm.elements.name.value = user.name;
       userForm.elements.email.value = user.email;
       userForm.elements.team.value = user.team;
+      syncUserSubmit();
+      setPasswordFieldsEnabled(true, true);
       document.querySelector("[data-user-dialog-title]").textContent = "EDITAR TREINADOR";
       userDialog.showModal();
     };
@@ -1209,7 +1231,9 @@
         systemUsers[index].status = activating ? "ATIVO" : "INATIVO";
         status.textContent = systemUsers[index].status;
         status.className = `status-badge status-badge--${activating ? "success" : "muted"}`;
-        event.currentTarget.textContent = activating ? "DESATIVAR" : "ATIVAR";
+        const toggleLabel = `${activating ? "Desativar" : "Ativar"} treinador`;
+        event.currentTarget.setAttribute("aria-label", toggleLabel);
+        event.currentTarget.title = toggleLabel;
         refreshUserStats();
         showToast(`Usuário ${activating ? "ativado" : "desativado"}.`);
       });
@@ -1221,6 +1245,8 @@
       }
       const title = document.querySelector("[data-user-dialog-title]");
       if (title) title.textContent = "NOVO TREINADOR";
+      setPasswordFieldsEnabled(true);
+      syncUserSubmit();
       if (userDialog) userDialog.showModal();
     }));
     document.querySelectorAll("[data-close-user-dialog]").forEach((button) => button.addEventListener("click", () => userDialog && userDialog.close()));
@@ -1243,7 +1269,8 @@
         email: userForm.elements.email.value.trim(),
         team: userForm.elements.team.value,
         status: index >= 0 ? systemUsers[index].status : "ATIVO",
-        access: index >= 0 ? systemUsers[index].access : "AINDA NÃO ACESSOU"
+        access: index >= 0 ? systemUsers[index].access : "AINDA NÃO ACESSOU",
+        initialPassword: userForm.elements.password.value || (index >= 0 ? systemUsers[index].initialPassword : "")
       };
       if (index >= 0) {
         systemUsers[index] = user;
