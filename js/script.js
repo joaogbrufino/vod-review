@@ -17,6 +17,7 @@
     ufu: "assets/ufu-saints.png",
     ceub: "assets/ceub-octopus.png",
     azure: "assets/azure-bears.png",
+    wolf: "assets/wolf-gaming.png",
     reviewMap: "assets/review-map.png",
     brazil: "assets/brazil.png",
     wolf: "assets/wolf-gaming.png",
@@ -42,19 +43,19 @@
 
   const routes = new Set([
     "login", "equipe", "dashboard", "partidas", "jogadores", "usuarios",
-    "revisoes", "gravacoes", "sincronizacao", "revisao", "sintese", "nova-partida", "scoreboard", "rastreabilidade"
+    "revisoes", "gravacoes", "sincronizacao", "preparando", "revisao", "sintese", "nova-partida", "scoreboard", "rastreabilidade"
   ]);
 
   // Estado exclusivamente visual: é descartado ao atualizar a página.
   const prototypeState = {
     matchStep: 1,
-    participants: new Set(["Psyder", "caKo", "Jhons"]),
+    participants: new Set(["André", "kick", "greinzera"]),
     recordingMode: "multi",
     syncState: "pending",
     scoreboardState: "incomplete",
     reviewReady: false,
     synthesisVersions: 0,
-    selectedPlayer: "Psyder"
+    selectedPlayer: "André"
   };
 
   function getRoute() {
@@ -108,9 +109,9 @@
   function teamSummary({ compact = false } = {}) {
     return `<section class="team-summary${compact ? " team-summary--compact" : ""}" aria-label="Resumo da equipe">
       <div class="team-summary__identity">
-        <img class="team-summary__logo" src="${assets.rushone}" alt="Logo RUSH ONE">
-        <h1 class="team-summary__name">RUSH ONE</h1>
-        <div class="team-summary__meta"><span>RSH</span><span>·</span><span>GO</span><span>${getHashParams().has("vazio") ? "· SEM PARTIDAS CONSIDERADAS" : "· 12V 6D 0E · 66,7% DE VITÓRIAS"}</span></div>
+        <img class="team-summary__logo" src="${assets.azure}" alt="Logo AZURE BEARS">
+        <h1 class="team-summary__name">AZURE BEARS</h1>
+        <div class="team-summary__meta"><span>AZR</span><span>·</span><span>GO</span><span>${getHashParams().has("vazio") ? "· SEM PARTIDAS CONSIDERADAS" : "· 12V 6D 0E · 66,7% DE VITÓRIAS"}</span></div>
       </div>
       ${compact ? "" : `<p class="team-summary__metric">43%</p>
       <dl class="team-summary__facts"><dt>Ranking:</dt><dd>#1</dd><dt>Info 2:</dt><dd>--</dd><dt>Info 3:</dt><dd>--</dd></dl>`}
@@ -127,7 +128,7 @@
             <span class="brand-heading__rule" aria-hidden="true"></span>
           </div>
           <p class="brand-footer">
-            <span class="brand-footer__identity">© 2026 RUSH ONE ESPORTS</span>
+            <span class="brand-footer__identity">© 2026 AZURE BEARS</span>
             <span>1.0.0 RELEASE</span>
           </p>
         </aside>`}
@@ -199,18 +200,16 @@
             </label>
             <div class="field">
               <label for="team-name">NOME DA EQUIPE</label>
-              <div class="input-shell"><input id="team-name" name="teamName" type="text" value="RUSH ONE ESPORTS"></div>
+              <div class="input-shell"><input id="team-name" name="teamName" type="text" value="AZURE BEARS"></div>
             </div>
             <div class="form-row">
               <div class="field field--tag">
                 <div class="field__head"><label for="team-tag">TAG / SIGLA</label><span class="hint">MÁX 4 CH.</span></div>
-                <div class="input-shell"><input id="team-tag" name="tag" type="text" maxlength="4" value="RSH"></div>
+                <div class="input-shell"><input id="team-tag" name="tag" type="text" maxlength="4" value="AZR"></div>
               </div>
               <div class="field">
                 <label for="team-state">ESTADO (UF)</label>
-                <div class="input-shell select-shell">
-                  <select id="team-state" name="state">${stateOptions()}</select>
-                </div>
+                ${stateField("GO", "team-state")}
               </div>
             </div>
           </div>
@@ -221,30 +220,48 @@
 
   const recentMatches = [
     { week: "Haven", rival: "Green Owls", rivalLogo: assets.greenOwls, logoSize: 20, ours: 13, theirs: 8, result: "win" },
-    { week: "Ascent", rival: "Azure Bears", rivalLogo: assets.azure, logoSize: 20, ours: 9, theirs: 13, result: "loss" },
+    { week: "Ascent", rival: "Wolf Gaming", rivalLogo: assets.wolf, logoSize: 20, ours: 9, theirs: 13, result: "loss" },
     { week: "Lotus", rival: "CAAP Hellhounds", rivalLogo: assets.caap, logoSize: 17, ours: 13, theirs: 11, result: "win" },
     { week: "Split", rival: "A2E UFF", rivalLogo: assets.a2e, logoSize: 20, ours: 13, theirs: 6, result: "win" },
     { week: "Bind", rival: "UFU Saints", rivalLogo: assets.ufu, logoSize: 19, ours: 13, theirs: 10, result: "win" },
     { week: "Haven", rival: "UFU Saints", rivalLogo: assets.ufu, logoSize: 19, ours: 13, theirs: 7, result: "win" }
   ];
 
+  const playerPhotos = {
+    "André": "assets/players/Andr%C3%A9.webp",
+    kick: "assets/players/kick.webp",
+    greinzera: "assets/players/greinzera.webp",
+    pim: "assets/players/pim_new.webp",
+    taek: "assets/players/taek.webp"
+  };
+  function playerInitials(name) {
+    return String(name || "?").replace(/[^\p{L}\p{N} ]/gu, "").trim().split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toLocaleUpperCase("pt-BR") || "?";
+  }
+  function playerAvatar(name, cls = "") {
+    const roster = (typeof rosterPlayers !== "undefined" ? rosterPlayers : []).find((r) => r.name === name);
+    const src = roster ? roster.photo : playerPhotos[name];
+    return src
+      ? `<img class="player-photo ${cls}" src="${src}" alt="Foto de ${name}">`
+      : `<span class="player-photo player-photo--empty ${cls}" role="img" aria-label="${name} sem foto"><b>${playerInitials(name)}</b></span>`;
+  }
+
   const players = [
-    { rating: "+3,2", name: "Psyder", agent: "Omen", portrait: assets.agents.omen.portrait, icons: [{ name: "Omen", src: assets.agents.omen.icon }, { name: "Viper", src: assets.agents.viper.icon }] },
-    { rating: "+5,1", name: "caKo", agent: "Jett", portrait: assets.agents.jett.portrait, icons: [{ name: "Jett", src: assets.agents.jett.icon }, { name: "Omen", src: assets.agents.omen.icon }] },
-    { rating: "+0,8", name: "Jhons", agent: "Sova", portrait: assets.agents.sova.portrait, icons: [{ name: "Sova", src: assets.agents.sova.icon }, { name: "Killjoy", src: assets.agents.killjoy.icon }] },
-    { rating: "+2,4", name: "iSay", agent: "Killjoy", portrait: assets.agents.killjoy.portrait, icons: [{ name: "Killjoy", src: assets.agents.killjoy.icon }, { name: "Viper", src: assets.agents.viper.icon }] },
-    { rating: "−1,3", name: "Ethan", agent: "Viper", portrait: assets.agents.viper.portrait, icons: [{ name: "Viper", src: assets.agents.viper.icon }, { name: "Sova", src: assets.agents.sova.icon }] }
+    { rating: "+3,2", name: "André", agent: "Omen", portrait: assets.agents.omen.portrait, icons: [{ name: "Omen", src: assets.agents.omen.icon }, { name: "Viper", src: assets.agents.viper.icon }] },
+    { rating: "+5,1", name: "kick", agent: "Jett", portrait: assets.agents.jett.portrait, icons: [{ name: "Jett", src: assets.agents.jett.icon }, { name: "Omen", src: assets.agents.omen.icon }] },
+    { rating: "+0,8", name: "greinzera", agent: "Sova", portrait: assets.agents.sova.portrait, icons: [{ name: "Sova", src: assets.agents.sova.icon }, { name: "Killjoy", src: assets.agents.killjoy.icon }] },
+    { rating: "+2,4", name: "pim", agent: "Killjoy", portrait: assets.agents.killjoy.portrait, icons: [{ name: "Killjoy", src: assets.agents.killjoy.icon }, { name: "Viper", src: assets.agents.viper.icon }] },
+    { rating: "−1,3", name: "taek", agent: "Viper", portrait: assets.agents.viper.portrait, icons: [{ name: "Viper", src: assets.agents.viper.icon }, { name: "Sova", src: assets.agents.sova.icon }] }
   ];
 
   const recentNotes = [
-    { target: "JOGADOR · caKo", time: "12:42", match: "VS AZURE BEARS · ASCENT", body: "Rotação tardia após o contato. Revisar o utilitário do Sova no retake." },
-    { target: "JOGADOR · Psyder", time: "07:31", match: "VS AZURE BEARS · ASCENT", body: "Evitar compra fragmentada. Priorizar entrada da Jett com flash coordenada." },
-    { target: "EQUIPE", time: "03:18", match: "VS AZURE BEARS · ASCENT", body: "Manter dupla em crossfire e guardar a Viper Pit para o segundo contato." }
+    { target: "JOGADOR · kick", time: "12:42", match: "VS WOLF GAMING · ASCENT", body: "Rotação tardia após o contato. Revisar o utilitário do Sova no retake." },
+    { target: "JOGADOR · André", time: "07:31", match: "VS WOLF GAMING · ASCENT", body: "Evitar compra fragmentada. Priorizar entrada da Jett com flash coordenada." },
+    { target: "EQUIPE", time: "03:18", match: "VS WOLF GAMING · ASCENT", body: "Manter dupla em crossfire e guardar a Viper Pit para o segundo contato." }
   ];
 
   const chartData = [
     { x: "0%", date: "28/03", logo: assets.greenOwls, logoSize: 31, logoOffset: 8, logoTop: 257, a: ["W", 13, 104], b: ["L", 8, 64] },
-    { x: "16.66%", date: "21/03", logo: assets.azure, logoSize: 31, logoOffset: 9, logoTop: 257, a: ["L", 9, 72], b: ["W", 13, 104] },
+    { x: "16.66%", date: "21/03", logo: assets.wolf, logoSize: 31, logoOffset: 9, logoTop: 257, a: ["L", 9, 72], b: ["W", 13, 104] },
     { x: "33.33%", date: "14/03", logo: assets.caap, logoSize: 31, logoOffset: 11, logoTop: 257, a: ["W", 13, 104], b: ["L", 11, 88] },
     { x: "50%", date: "07/03", logo: assets.a2e, logoSize: 34, logoOffset: 10, logoTop: 255, a: ["W", 13, 104], b: ["L", 6, 48] },
     { x: "66.66%", date: "28/02", logo: assets.ufu, logoSize: 31, logoOffset: 9, logoTop: 257, a: ["W", 13, 104], b: ["L", 10, 80] },
@@ -259,7 +276,7 @@
       <article class="match-row">
         <div class="match-row__meta"><span><strong>Mar 28</strong> · 12:20 PM</span><span>${match.week}</span></div>
         <div class="match-row__team${oursMuted}">
-          <span class="match-row__identity"><span class="match-logo"><img src="${assets.rushone}" alt=""></span><span>UNIRV RUSH ONE</span></span>
+          <span class="match-row__identity"><span class="match-logo"><img src="${assets.azure}" alt=""></span><span>AZURE BEARS</span></span>
           <span class="match-row__score">${match.ours}</span>
         </div>
         <div class="match-row__team${rivalMuted}">
@@ -271,10 +288,9 @@
 
   function playerCard(player) {
     return `
-      <article class="player-card" role="button" tabindex="0" aria-label="${player.name}, agente principal ${player.agent}" data-proto-action="select-player" data-player="${player.name}" data-goto="jogadores">
-        <img class="player-card__portrait" src="${player.portrait}" alt="${player.agent}">
+      <article class="player-card" role="button" tabindex="0" aria-label="${player.name}" data-proto-action="select-player" data-player="${player.name}" data-goto="jogadores">
+        ${playerAvatar(player.name, "player-card__photo")}
         <span class="player-card__shade" aria-hidden="true"></span>
-        <p class="player-card__rating" title="Saldo médio de abates por partida">${player.rating}</p>
         <h3 class="player-card__name">${player.name}</h3>
         <div class="player-card__icons" aria-label="Agentes mais usados">
           ${player.icons.map((icon) => `<span><img src="${icon.src}" alt="${icon.name}" title="${icon.name}"></span>`).join("")}
@@ -316,16 +332,16 @@
 
   const matchCatalog = [
     { status: "REVISÃO FINALIZADA", result: "WIN", date: "28 MAR · 12:20", event: "VPL · SEMANA 2", opponent: "GREEN OWLS", opponentTag: "UNB", logo: assets.greenOwls, score: "13 — 8", map: "HAVEN", selected: true },
-    { status: "REVISÃO EM ANDAMENTO", result: "LOSS", date: "21 MAR · 19:00", event: "VPL · SEMANA 2", opponent: "AZURE BEARS", opponentTag: "AZR", logo: assets.azure, score: "9 — 13", map: "ASCENT" },
+    { status: "REVISÃO EM ANDAMENTO", result: "LOSS", date: "21 MAR · 19:00", event: "VPL · SEMANA 2", opponent: "WOLF GAMING", opponentTag: "WLF", logo: assets.wolf, score: "9 — 13", map: "ASCENT" },
     { status: "AGUARDANDO GRAVAÇÕES", result: "PENDING", date: "14 MAR · 18:30", event: "VPL · SEMANA 1", opponent: "CAAP HELLHOUNDS", opponentTag: "CAAP", logo: assets.caap, score: "— : —", map: "LOTUS" }
   ];
 
   const homeScoreboard = [
-    { player: "caKo", agent: "Jett", icon: assets.agents.jett.icon, rating: "1.31", acs: 268, k: 22, d: 13, a: 5, diff: "+9", kast: "78%", hs: "31%", fk: 6, fd: 2 },
-    { player: "Psyder", agent: "Omen", icon: assets.agents.omen.icon, rating: "1.18", acs: 224, k: 18, d: 14, a: 11, diff: "+4", kast: "74%", hs: "24%", fk: 3, fd: 2 },
-    { player: "iSay", agent: "Killjoy", icon: assets.agents.killjoy.icon, rating: "1.12", acs: 208, k: 17, d: 13, a: 8, diff: "+4", kast: "81%", hs: "27%", fk: 2, fd: 1 },
-    { player: "Jhons", agent: "Sova", icon: assets.agents.sova.icon, rating: "1.04", acs: 191, k: 15, d: 14, a: 13, diff: "+1", kast: "76%", hs: "22%", fk: 1, fd: 2 },
-    { player: "Ethan", agent: "Viper", icon: assets.agents.viper.icon, rating: "0.98", acs: 176, k: 14, d: 15, a: 7, diff: "−1", kast: "71%", hs: "29%", fk: 1, fd: 3 }
+    { player: "kick", agent: "Jett", icon: assets.agents.jett.icon, rating: "1.31", acs: 268, k: 22, d: 13, a: 5, diff: "+9", kast: "78%", hs: "31%", fk: 6, fd: 2 },
+    { player: "André", agent: "Omen", icon: assets.agents.omen.icon, rating: "1.18", acs: 224, k: 18, d: 14, a: 11, diff: "+4", kast: "74%", hs: "24%", fk: 3, fd: 2 },
+    { player: "pim", agent: "Killjoy", icon: assets.agents.killjoy.icon, rating: "1.12", acs: 208, k: 17, d: 13, a: 8, diff: "+4", kast: "81%", hs: "27%", fk: 2, fd: 1 },
+    { player: "greinzera", agent: "Sova", icon: assets.agents.sova.icon, rating: "1.04", acs: 191, k: 15, d: 14, a: 13, diff: "+1", kast: "76%", hs: "22%", fk: 1, fd: 2 },
+    { player: "taek", agent: "Viper", icon: assets.agents.viper.icon, rating: "0.98", acs: 176, k: 14, d: 15, a: 7, diff: "−1", kast: "71%", hs: "29%", fk: 1, fd: 3 }
   ];
 
   const opponentScoreboard = [
@@ -338,17 +354,18 @@
 
   // Partidas da equipe (RF006) e gravações dos participantes (RF008): estado da demonstração
   const matchStatusLabel = { finalized: "REVISÃO FINALIZADA", progress: "REVISÃO EM ANDAMENTO", waiting: "AGUARDANDO GRAVAÇÕES" };
-  const opponentLogos = { "GREEN OWLS": assets.greenOwls, "AZURE BEARS": assets.azure, "CAAP HELLHOUNDS": assets.caap, "A2E UFF": assets.a2e, "UFU SAINTS": assets.ufu };
-  const mapOptions = ["Abyss", "Ascent", "Bind", "Breeze", "Fracture", "Haven", "Icebox", "Lotus", "Pearl", "Split", "Sunset"];
-  const fullFive = ["caKo", "Psyder", "iSay", "Jhons", "Ethan"];
+  const opponentLogos = { "GREEN OWLS": assets.greenOwls, "WOLF GAMING": assets.wolf, "CAAP HELLHOUNDS": assets.caap, "A2E UFF": assets.a2e, "UFU SAINTS": assets.ufu };
+  const mapOptions = ["Ascent", "Bind", "Haven", "Lotus", "Split"];
+  const mapImages = { Ascent: "assets/maps/Ascent.webp", Bind: "assets/maps/Bind.webp", Haven: "assets/maps/Haven.png", Lotus: "assets/maps/Lotus.jpg", Split: "assets/maps/Split.webp" };
+  const fullFive = ["kick", "André", "pim", "greinzera", "taek"];
   const recordingOf = (name, gb, dur) => ({ file: `${name.toLowerCase()}_pov.mp4`, size: gb, duration: dur });
   prototypeState.matches = [
     { id: "m1", opponent: "GREEN OWLS", tag: "UNB", datetime: "2026-03-28T12:20", event: "VPL 2026 · Semana 2", type: "CAMPEONATO", map: "Haven", status: "finalized", ours: 13, theirs: 8,
       participants: [...fullFive], recordings: Object.fromEntries(fullFive.slice(0, 4).map((n, i) => [n, recordingOf(n, 1.2 + i * .2, "42:18")])) },
-    { id: "m2", opponent: "AZURE BEARS", tag: "AZR", datetime: "2026-03-21T19:00", event: "VPL 2026 · Semana 2", type: "CAMPEONATO", map: "Ascent", status: "progress", ours: null, theirs: null,
+    { id: "m2", opponent: "WOLF GAMING", tag: "WLF", datetime: "2026-03-21T19:00", event: "VPL 2026 · Semana 2", type: "CAMPEONATO", map: "Ascent", status: "progress", ours: null, theirs: null,
       participants: [...fullFive], recordings: Object.fromEntries(fullFive.slice(0, 4).map((n, i) => [n, recordingOf(n, 1.1 + i * .2, "38:52")])) },
     { id: "m3", opponent: "CAAP HELLHOUNDS", tag: "CAAP", datetime: "2026-03-14T18:30", event: "VPL 2026 · Semana 1", type: "CAMPEONATO", map: "Lotus", status: "waiting", ours: null, theirs: null,
-      participants: ["Psyder", "caKo", "Jhons"], recordings: {} },
+      participants: ["André", "kick", "greinzera"], recordings: { "André": recordingOf("André", 1.2, "41:05"), kick: recordingOf("kick", 1.1, "39:48") } },
     { id: "m4", opponent: "A2E UFF", tag: "A2E", datetime: "2026-03-07T19:00", event: "Copa Aliança 2026", type: "CAMPEONATO", map: "Split", status: "finalized", ours: 13, theirs: 6,
       participants: [...fullFive], recordings: Object.fromEntries(fullFive.map((n, i) => [n, recordingOf(n, 1.0 + i * .1, "36:40")])) },
     { id: "m5", opponent: "UFU SAINTS", tag: "UFU", datetime: "2026-02-28T19:00", event: "Copa Aliança 2026", type: "CAMPEONATO", map: "Bind", status: "finalized", ours: 13, theirs: 10,
@@ -376,7 +393,7 @@
     return `<button class="match-catalog-card${prototypeState.selectedMatch === match.id ? " is-selected" : ""}" type="button" aria-label="${match.opponent}, ${matchStatusLabel[match.status]}" data-proto-action="select-match" data-match="${match.id}" data-search="${search}">
       <span class="match-catalog-card__top"><span>${matchDate(match.datetime)}</span><span>${match.event || match.type}</span></span>
       <span class="match-catalog-card__body">
-        <span class="match-catalog-card__team"><img src="${assets.rushone}" alt=""><span><strong>RUSH ONE</strong><small>RSH</small></span></span>
+        <span class="match-catalog-card__team"><img src="${assets.azure}" alt=""><span><strong>AZURE BEARS</strong><small>AZR</small></span></span>
         <span class="match-catalog-card__score${resultClass}"><small>${result.label}</small><strong>${result.score}</strong></span>
         <span class="match-catalog-card__team match-catalog-card__team--opponent"><img src="${opponentLogos[match.opponent] || assets.shieldLogo}" alt=""><span><strong>${match.opponent}</strong><small>${match.tag || ""}</small></span></span>
       </span>
@@ -413,22 +430,24 @@
     const players = match.participants.map((name) => rosterPlayers.find((player) => player.name === name)).filter(Boolean);
     const body = finalized ? `<div class="scoreboards">
               <div class="scoreboard-legend"><span>PLACAR FINAL E ESTATÍSTICAS DOS PARTICIPANTES</span><span>K · D · A · <abbr title="Primeiros abates">FK</abbr> · SALDO</span></div>
-              ${scoreboardTable("RUSH ONE", "RSH", assets.rushone, String(match.ours), "home", homeScoreboard.filter((row) => match.participants.includes(row.player)))}</div>`
-      : `<div class="match-participants"><div class="scoreboard-legend"><span>PARTICIPANTES DA PARTIDA</span><span>${players.length} DE 5</span></div><div class="match-participants__list">${players.map((player) => `<span><img src="${player.icon}" alt=""><strong>${player.name}</strong><small>${player.role} · ${match.recordings[player.name] ? "gravação enviada" : "sem gravação"}</small></span>`).join("")}</div><p class="dialog-info">O placar final e as estatísticas individuais são registrados na finalização da sessão de revisão.</p></div>`;
+              ${scoreboardTable("AZURE BEARS", "AZR", assets.azure, String(match.ours), "home", homeScoreboard.filter((row) => match.participants.includes(row.player)))}</div>`
+      : `<div class="match-participants"><div class="scoreboard-legend"><span>PARTICIPANTES DA PARTIDA</span><span>${players.length} DE 5</span></div><div class="match-participants__list">${players.map((player) => `<span>${playerAvatar(player.name)}<strong>${player.name}</strong><small>${player.role} · ${match.recordings[player.name] ? "gravação enviada" : "sem gravação"}</small></span>`).join("")}</div><p class="dialog-info">O placar final e as estatísticas individuais são registrados na finalização da sessão de revisão.</p></div>`;
+    const tab = prototypeState.matchTab === "recordings" ? "recordings" : "main";
+    if (tab === "recordings") prototypeState.recordingMatch = match.id;
     return `<article class="match-detail" id="selected-match-detail" data-match-detail tabindex="-1">
             <div class="match-detail__navigation"><button class="module-secondary" type="button" data-proto-action="close-match">← VOLTAR À LISTAGEM</button></div>
             <header class="match-detail__hero">
               <img class="match-detail__backdrop" src="${match.map === "Ascent" ? assets.reviewMap : assets.haven}" alt="">
               <div class="match-detail__meta"><span class="match-status-badge">${matchStatusLabel[match.status]}</span><span>${match.type}${match.event ? ` · ${match.event.toLocaleUpperCase("pt-BR")}` : ""}</span><span>${matchDate(match.datetime, true)}</span></div>
               <div class="match-versus">
-                <div class="match-versus__team"><img src="${assets.rushone}" alt="RUSH ONE"><strong>RUSH ONE</strong><span>RSH</span></div>
+                <div class="match-versus__team"><img src="${assets.azure}" alt="AZURE BEARS"><strong>AZURE BEARS</strong><span>AZR</span></div>
                 <div class="match-versus__score"><span>${match.map.toLocaleUpperCase("pt-BR")} · PLACAR FINAL</span><strong>${finalized ? `<em>${match.ours}</em><i>:</i><em>${match.theirs}</em>` : "<em>—</em><i>:</i><em>—</em>"}</strong><small>${result.label}</small></div>
                 <div class="match-versus__team"><img src="${opponentLogos[match.opponent] || assets.shieldLogo}" alt="${match.opponent}"><strong>${match.opponent}</strong><span>${match.tag || ""}</span></div>
               </div>
             </header>
-            <nav class="match-detail__tabs" aria-label="Detalhes da partida"><button class="is-active" type="button">${finalized ? "SCOREBOARD" : "PARTICIPANTES"}</button><button type="button" data-proto-action="open-recordings" data-match="${match.id}">GRAVAÇÕES <span>${sent}</span></button><button type="button" data-route="revisao">SESSÃO <span>${match.status === "waiting" ? 0 : 1}</span></button></nav>
-            ${body}
-            <footer class="match-detail__actions"><button class="module-secondary" type="button" data-route="nova-partida?editar=1">EDITAR PARTIDA</button>${finalized ? '<button class="module-secondary" type="button" data-route="scoreboard?correcao=1">CORRIGIR SCOREBOARD</button>' : ""}<button class="module-secondary" type="button" data-proto-action="open-recordings" data-match="${match.id}">GRAVAÇÕES</button><button class="module-danger" type="button" data-proto-action="open-delete-match">EXCLUIR PARTIDA</button></footer>
+            <nav class="match-detail__tabs" role="tablist" aria-label="Detalhes da partida"><button class="${tab === "main" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "main"}" data-proto-action="match-tab" data-tab="main">${finalized ? "SCOREBOARD" : "PARTICIPANTES"}</button><button class="${tab === "recordings" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "recordings"}" data-proto-action="match-tab" data-tab="recordings">GRAVAÇÕES <span>${sent}</span></button><button type="button" data-route="${match.status === "waiting" ? (sent >= 2 ? "preparando" : "revisao") : "revisao"}"${match.status === "waiting" && !sent ? " disabled" : ""}>SESSÃO <span>${match.status === "waiting" ? 0 : 1}</span></button></nav>
+            ${tab === "recordings" ? recordingsPanel(match) : body}
+            <footer class="match-detail__actions"><button class="module-secondary" type="button" data-route="nova-partida?editar=1">EDITAR PARTIDA</button>${finalized ? '<button class="module-secondary" type="button" data-route="scoreboard?correcao=1">CORRIGIR SCOREBOARD</button>' : ""}<button class="module-danger" type="button" data-proto-action="open-delete-match">EXCLUIR PARTIDA</button></footer>
           </article>`;
   }
 
@@ -441,7 +460,7 @@
         ${matchSidebar()}
         <main class="dashboard-main dashboard-main--module">
         <div class="matches-page">
-        <section class="matches-toolbar" aria-label="Pesquisa de partidas">
+        <section class="matches-toolbar" aria-label="Pesquisa de partidas"${selected ? " hidden" : ""}>
           <label class="matches-search"><span aria-hidden="true">⌕</span><input type="search" placeholder="Buscar adversário, evento ou mapa" aria-label="Buscar adversário, evento ou mapa" data-match-search></label>
           <button class="module-primary" type="button" data-route="nova-partida">NOVA PARTIDA</button>
         </section>
@@ -462,18 +481,18 @@
         </main>
         ${reviewPanel()}
       </div>
-      ${selected ? `<dialog class="module-dialog confirm-dialog" data-delete-match-dialog><form method="dialog"><header><div><span class="module-label">EXCLUSÃO DEFINITIVA</span><h2>Excluir RUSH ONE × ${selected.opponent}?</h2></div><button type="button" data-proto-action="close-delete-match" aria-label="Fechar">×</button></header><div class="dialog-fields"><p>A exclusão é definitiva e remove também os registros associados:</p><ul class="cascade-list"><li>participantes, scoreboard e estatísticas individuais</li><li>gravações e arquivos de vídeo armazenados</li><li>sessão de revisão, anotações e sínteses</li></ul><p class="dialog-info">Os indicadores da equipe e dos jogadores deixam de considerar esta partida.</p></div><footer><button class="module-secondary" type="button" data-proto-action="close-delete-match">CANCELAR</button><button class="module-danger" type="button" data-proto-action="confirm-delete-match">EXCLUIR PARTIDA</button></footer></form></dialog>` : ""}
+      ${selected ? `<dialog class="module-dialog confirm-dialog" data-delete-match-dialog><form method="dialog"><header><div><span class="module-label">EXCLUSÃO DEFINITIVA</span><h2>Excluir AZURE BEARS × ${selected.opponent}?</h2></div><button type="button" data-proto-action="close-delete-match" aria-label="Fechar">×</button></header><div class="dialog-fields"><p>A exclusão é definitiva e remove também os registros associados:</p><ul class="cascade-list"><li>participantes, scoreboard e estatísticas individuais</li><li>gravações e arquivos de vídeo armazenados</li><li>sessão de revisão, anotações e sínteses</li></ul><p class="dialog-info">Os indicadores da equipe e dos jogadores deixam de considerar esta partida.</p></div><footer><button class="module-secondary" type="button" data-proto-action="close-delete-match">CANCELAR</button><button class="module-danger" type="button" data-proto-action="confirm-delete-match">EXCLUIR PARTIDA</button></footer></form></dialog>` : ""}
       <div class="app-toast" role="status" aria-live="polite" data-toast></div>
     </section>`;
   }
 
   const rosterPlayers = [
-    { name: "Psyder", fullName: "Pedro Almeida", riotId: "Psyder#RSH", role: "CONTROLADOR", portrait: assets.agents.omen.portrait, icon: assets.agents.omen.icon, agent: "Omen", rating: "+3,2", matches: 18 },
-    { name: "caKo", fullName: "Carlos Silva", riotId: "caKo#BR1", role: "DUELISTA", portrait: assets.agents.jett.portrait, icon: assets.agents.jett.icon, agent: "Jett", rating: "+5,1", matches: 18 },
-    { name: "Jhons", fullName: "João Souza", riotId: "Jhons#0042", role: "INICIADOR", portrait: assets.agents.sova.portrait, icon: assets.agents.sova.icon, agent: "Sova", rating: "+0,8", matches: 18 },
-    { name: "iSay", fullName: "Isaias Santos", riotId: "iSay#RSH", role: "SENTINELA", portrait: assets.agents.killjoy.portrait, icon: assets.agents.killjoy.icon, agent: "Killjoy", rating: "+2,4", matches: 18 },
-    { name: "Ethan", fullName: "Ethan Oliveira", riotId: "Ethan#777", role: "CONTROLADOR", portrait: assets.agents.viper.portrait, icon: assets.agents.viper.icon, agent: "Viper", rating: "−1,3", matches: 18 },
-    { name: "Kaue", fullName: "Kauê Lima", riotId: "Kaue#RSH", role: "DUELISTA", portrait: assets.shieldLogo, icon: assets.shieldLogo, agent: "—", rating: "—", matches: 0 }
+    { name: "André", photo: playerPhotos["André"], fullName: "Pedro Almeida", riotId: "André#AZR", role: "CONTROLADOR", portrait: assets.agents.omen.portrait, icon: assets.agents.omen.icon, agent: "Omen", rating: "+3,2", matches: 18 },
+    { name: "kick", photo: playerPhotos["kick"], fullName: "Carlos Silva", riotId: "kick#BR1", role: "DUELISTA", portrait: assets.agents.jett.portrait, icon: assets.agents.jett.icon, agent: "Jett", rating: "+5,1", matches: 18 },
+    { name: "greinzera", photo: playerPhotos["greinzera"], fullName: "João Souza", riotId: "greinzera#0042", role: "INICIADOR", portrait: assets.agents.sova.portrait, icon: assets.agents.sova.icon, agent: "Sova", rating: "+0,8", matches: 18 },
+    { name: "pim", photo: playerPhotos["pim"], fullName: "Isaias Santos", riotId: "pim#AZR", role: "SENTINELA", portrait: assets.agents.killjoy.portrait, icon: assets.agents.killjoy.icon, agent: "Killjoy", rating: "+2,4", matches: 18 },
+    { name: "taek", photo: playerPhotos["taek"], fullName: "Ethan Oliveira", riotId: "taek#777", role: "CONTROLADOR", portrait: assets.agents.viper.portrait, icon: assets.agents.viper.icon, agent: "Viper", rating: "−1,3", matches: 18 },
+    { name: "Kaue", photo: null, fullName: "Kauê Lima", riotId: "Kaue#AZR", role: "DUELISTA", portrait: assets.shieldLogo, icon: assets.shieldLogo, agent: "—", rating: "—", matches: 0 }
   ];
 
   // Riot IDs de jogadores de outras equipes (unicidade na aplicação, RN046)
@@ -485,7 +504,7 @@
     { date: "28 MAR", opponent: "GREEN OWLS", logo: assets.greenOwls, result: "WIN", score: "13 — 8", agent: assets.agents.omen.icon, kda: "18 / 14 / 11", fk: 3, diff: "+4" },
     { date: "07 MAR", opponent: "A2E UFF", logo: assets.a2e, result: "WIN", score: "13 — 6", agent: assets.agents.omen.icon, kda: "17 / 13 / 12", fk: 2, diff: "+4" },
     { date: "28 FEV", opponent: "UFU SAINTS", logo: assets.ufu, result: "WIN", score: "13 — 10", agent: assets.agents.viper.icon, kda: "16 / 14 / 8", fk: 3, diff: "+2" },
-    { date: "21 FEV", opponent: "AZURE BEARS", logo: assets.azure, result: "LOSS", score: "9 — 13", agent: assets.agents.omen.icon, kda: "14 / 17 / 6", fk: 1, diff: "−3" },
+    { date: "21 FEV", opponent: "WOLF GAMING", logo: assets.wolf, result: "LOSS", score: "9 — 13", agent: assets.agents.omen.icon, kda: "14 / 17 / 6", fk: 1, diff: "−3" },
     { date: "14 FEV", opponent: "CAAP HELLHOUNDS", logo: assets.caap, result: "WIN", score: "13 — 11", agent: assets.agents.viper.icon, kda: "21 / 15 / 9", fk: 4, diff: "+6" }
   ];
 
@@ -493,7 +512,7 @@
     const selected = player === selectedRosterPlayer();
     return `<button class="roster-item${selected ? " is-selected" : ""}" type="button" aria-label="${player.fullName}, ${player.role}" data-proto-action="select-player" data-player="${player.name}"${selected ? ' aria-current="true"' : ""}>
       <span class="roster-item__number">0${index + 1}</span>
-      <span class="roster-item__avatar"><img src="${player.portrait}" alt=""></span>
+      <span class="roster-item__avatar">${playerAvatar(player.name)}</span>
       <span class="roster-item__copy"><strong>${player.name}</strong><small>${player.role}</small></span>
       <span class="roster-item__rating"><small>SALDO</small><strong>${player.rating}</strong></span>
       <span aria-hidden="true"></span>
@@ -544,7 +563,7 @@
     const rivalMuted = fin && match.ours > match.theirs ? " is-muted" : "";
     return `<button type="button" class="match-row" data-proto-action="select-match" data-match="${match.id}" data-goto="partidas">
         <div class="match-row__meta"><span><strong>${matchDate(match.datetime).replace(" · ", "</strong> · ")}</span><span>${match.map}</span></div>
-        <div class="match-row__team${oursMuted}"><span class="match-row__identity"><span class="match-logo"><img src="${assets.rushone}" alt=""></span><span>RUSH ONE</span></span><span class="match-row__score">${fin ? match.ours : "—"}</span></div>
+        <div class="match-row__team${oursMuted}"><span class="match-row__identity"><span class="match-logo"><img src="${assets.azure}" alt=""></span><span>AZURE BEARS</span></span><span class="match-row__score">${fin ? match.ours : "—"}</span></div>
         <div class="match-row__team${rivalMuted}"><span class="match-row__identity"><span class="match-logo"><img src="${opponentLogos[match.opponent] || assets.shieldLogo}" alt=""></span><span>${match.opponent}</span></span><span class="match-row__score">${fin ? match.theirs : "—"}</span></div>
         ${fin ? "" : '<small class="match-row__pending">SEM PLACAR · REVISÃO NÃO FINALIZADA</small>'}
       </button>`;
@@ -561,7 +580,7 @@
         <div class="latest-match__hero">
           <img class="latest-match__map" src="${last.map === "Ascent" ? assets.reviewMap : assets.haven}" alt="Mapa ${last.map}">
           <div class="latest-match__versus">
-            <img class="team-logo" src="${assets.rushone}" alt="RUSH ONE"><span>RSH</span><span class="score-chip">${last.status === "finalized" ? `${last.ours}-${last.theirs}` : "—"}</span><span>${last.tag || ""}</span><img class="team-logo" src="${opponentLogos[last.opponent] || assets.shieldLogo}" alt="${last.opponent}">
+            <img class="team-logo" src="${assets.azure}" alt="AZURE BEARS"><span>AZR</span><span class="score-chip">${last.status === "finalized" ? `${last.ours}-${last.theirs}` : "—"}</span><span>${last.tag || ""}</span><img class="team-logo" src="${opponentLogos[last.opponent] || assets.shieldLogo}" alt="${last.opponent}">
           </div>
         </div>
         <button class="latest-match__details" type="button" data-proto-action="select-match" data-match="${last.id}" data-goto="partidas">VER DETALHES</button>
@@ -580,14 +599,14 @@
         <h2 class="review-card__title">REVISÃO EM ANDAMENTO</h2>
         <div class="review-match">
           <img src="${assets.reviewMap}" alt="Mapa da partida">
-          <div class="review-match__copy"><p class="review-match__teams">RUSH ONE<br>vs<br>AZURE BEARS</p><p class="review-match__time">Ascent · 21 MAR</p></div>
+          <div class="review-match__copy"><p class="review-match__teams">AZURE BEARS<br>vs<br>WOLF GAMING</p><p class="review-match__time">Ascent · 21 MAR</p></div>
         </div>
         <div class="review-progress__label"><span>POVs enviados</span><span>4/5 POVs</span></div>
         <div class="review-progress__segments" aria-label="Quatro de cinco pontos de vista concluídos"><span class="is-done"></span><span class="is-done"></span><span class="is-done"></span><span class="is-done"></span><span></span></div>
         <button class="continue-review" type="button" data-route="revisao">CONTINUAR REVISÃO</button>
       </section>
       <h2 class="notes-heading">Anotações Recentes</h2>
-      ${[...prototypeState.notes].sort((x, y) => y.id - x.id).slice(0, 3).map((n) => ({ target: n.target === "EQUIPE" ? "EQUIPE" : `JOGADOR · ${n.target}`, time: mmss(n.time), match: "VS AZURE BEARS · ASCENT", body: n.body })).map(noteCard).join("") || '<p class="review-notes__empty">Nenhuma anotação registrada.</p>'}
+      ${[...prototypeState.notes].sort((x, y) => y.id - x.id).slice(0, 3).map((n) => ({ target: n.target === "EQUIPE" ? "EQUIPE" : `JOGADOR · ${n.target}`, time: mmss(n.time), match: "VS WOLF GAMING · ASCENT", body: n.body })).map(noteCard).join("") || '<p class="review-notes__empty">Nenhuma anotação registrada.</p>'}
     </aside>`;
   }
 
@@ -595,7 +614,7 @@
     const agentKey = player.agent.toLocaleLowerCase("pt-BR");
     const portrait = assets.agents[agentKey]?.portrait || player.icon;
     return `<article class="match-player-card match-player-card--${side}">
-      <span class="match-player-card__portrait"><img src="${portrait}" alt="Agente de ${player.player}"><i aria-hidden="true"></i></span>
+      <span class="match-player-card__portrait">${playerAvatar(player.player)}<i aria-hidden="true"></i></span>
       <div><strong>${player.player}</strong></div>
     </article>`;
   }
@@ -604,7 +623,7 @@
     return `<aside class="agent-panel match-players-panel" aria-label="Jogadores da partida selecionada">
       <header class="match-players-panel__heading"><span>PARTICIPANTES DA PARTIDA</span><strong>5 JOGADORES</strong></header>
       <section class="match-team-roster match-team-roster--home" aria-labelledby="roster-home-title">
-        <header><img src="${assets.rushone}" alt=""><span><strong id="roster-home-title">RUSH ONE</strong><small>RSH · EQUIPE DO TREINADOR</small></span></header>
+        <header><img src="${assets.azure}" alt=""><span><strong id="roster-home-title">AZURE BEARS</strong><small>AZR · EQUIPE DO TREINADOR</small></span></header>
         <div>${homeScoreboard.map((player) => matchPlayerCard(player, "home")).join("")}</div>
       </section>
     </aside>`;
@@ -649,10 +668,10 @@
           <div class="individual-column">
             ${!player ? playerEmptyCard("ELENCO DA EQUIPE", "Nenhum jogador cadastrado. Utilize a opção “Adicionar jogador” para cadastrar o primeiro jogador da equipe.") : `<section class="individual-hero">
               <div class="individual-hero__backdrop" aria-hidden="true"></div>
-              <img class="individual-hero__portrait${hasData ? "" : " is-placeholder"}" src="${player.portrait}" alt="${hasData ? `${player.agent}, agente mais utilizado por ${player.name}` : ""}">
+              ${playerAvatar(player.name, "individual-hero__photo")}
               <div class="individual-hero__identity">
                 <div class="individual-hero__status"><span></span> JOGADOR DA EQUIPE</div>
-                <p>${player.role} · RSH</p>
+                <p>${player.role} · AZR</p>
                 <h1 data-player-name>${player.name.toLocaleUpperCase("pt-BR")}</h1>
                 <span class="individual-hero__name">${player.fullName} · ${player.riotId}</span>
                 <div class="individual-hero__tags">${hasData ? `<span>MAIS USADO: ${player.agent.toLocaleUpperCase("pt-BR")}</span><span>${player.matches} PARTIDAS</span>` : "<span>SEM PARTIDAS CONSIDERADAS</span>"}</div>
@@ -685,15 +704,6 @@
             </section>` : ""}
           </div>
           <aside class="player-insights" aria-label="Contexto de desempenho">${hasData ? `
-            <section class="last-performance-card">
-              <header class="insight-heading"><div><span>ÚLTIMA PARTIDA</span><small>28 MAR · VPL 2026</small></div><a href="#partidas">VER PARTIDA</a></header>
-              <div class="last-performance-card__match">
-                <img src="${assets.haven}" alt="Mapa Haven">
-                <div class="last-performance-card__versus"><span><img src="${assets.rushone}" alt=""><small>RSH</small></span><strong><em>13</em> — 8<small>VITÓRIA</small></strong><span><img src="${assets.greenOwls}" alt=""><small>UNB</small></span></div>
-                <p>HAVEN · REVISÃO FINALIZADA</p>
-              </div>
-              <div class="last-performance-card__stats"><span><small>K / D / A</small><strong>18 / 14 / 11</strong></span><span><small>FK</small><strong>3</strong></span><span><small>SALDO</small><strong>+4</strong></span></div>
-            </section>
             <section class="agent-pool-card">
               <header class="insight-heading"><div><span>POOL DE AGENTES</span><small>TEMPORADA 2026</small></div></header>
               <div class="agent-usage"><img src="${assets.agents.omen.icon}" alt="Omen"><div><span><strong>OMEN</strong><small>12 PARTIDAS</small></span><i><b style="width:67%"></b></i></div><em>67%</em></div>
@@ -706,8 +716,8 @@
             </section>` : ""}
           </aside>
         </div>
-        <dialog class="module-dialog" data-player-dialog><form method="dialog" data-player-form novalidate><header><div><span class="module-label">JOGADOR DA EQUIPE</span><h2 data-player-dialog-title>EDITAR JOGADOR</h2></div><button type="button" data-proto-action="close-player-dialog" aria-label="Fechar">×</button></header><div class="dialog-fields"><label><span>NICKNAME</span><input name="nickname" required maxlength="50" placeholder="Nome utilizado no jogo"></label><label><span>NOME COMPLETO</span><input name="fullName" required maxlength="150" placeholder="Nome completo do jogador"></label><label><span>RIOT ID</span><input name="riotId" required maxlength="22" placeholder="nome#tag"><small class="dialog-fields__hint">Nome de 3 a 16 caracteres e tag de 3 a 5 letras ou números.</small></label><label><span>FUNÇÃO PRINCIPAL</span><select name="role" required><option>CONTROLADOR</option><option>DUELISTA</option><option>INICIADOR</option><option>SENTINELA</option></select></label><p class="dialog-info dialog-info--consent">Ao cadastrar o jogador, o treinador declara ter obtido o consentimento dele para o registro destes dados e o uso de suas gravações nas revisões da equipe (LGPD).</p></div><footer><button class="module-danger" type="button" data-proto-action="open-remove-player" data-player-delete>EXCLUIR JOGADOR</button><button class="module-secondary" type="button" data-proto-action="close-player-dialog">CANCELAR</button><button class="module-primary" type="button" data-proto-action="save-player">SALVAR JOGADOR</button></footer></form></dialog>
-        <dialog class="module-dialog confirm-dialog" data-remove-player-dialog><form method="dialog"><header><div><span class="module-label">EXCLUSÃO DE JOGADOR</span><h2>Excluir ${player ? player.name : ""}?</h2></div><button type="button" data-proto-action="close-remove-player" aria-label="Fechar">×</button></header><div class="dialog-fields">${hasData ? `<p>${player.name} possui <strong>${player.matches} participações</strong> registradas em partidas. Para preservar os resultados da equipe, a aplicação manterá o histórico sem identificar o jogador:</p><ul class="cascade-list"><li>nome completo e nickname substituídos por “Jogador removido 01”</li><li>Riot ID removido</li><li>gravações do jogador e arquivos de vídeo excluídos</li><li>participações, estatísticas e anotações preservadas</li></ul><p class="dialog-info">O jogador deixa o elenco e não poderá ser selecionado em novas partidas. Esta ação não pode ser desfeita.</p>` : `<p>${player ? player.name : ""} não possui participações registradas em partidas.</p><p class="dialog-info">A exclusão é definitiva: os dados do jogador serão removidos e não poderão ser recuperados.</p>`}</div><footer><button class="module-secondary" type="button" data-proto-action="close-remove-player">CANCELAR</button><button class="module-danger" type="button" data-proto-action="remove-player">EXCLUIR JOGADOR</button></footer></form></dialog>`
+        <dialog class="module-dialog" data-player-dialog><form method="dialog" data-player-form novalidate><header><div><span class="module-label">JOGADOR DA EQUIPE</span><h2 data-player-dialog-title>EDITAR JOGADOR</h2></div><button type="button" data-proto-action="close-player-dialog" aria-label="Fechar">×</button></header><div class="dialog-fields"><label class="logo-field"><span>FOTO</span><span class="logo-upload"><span class="module-secondary">SELECIONAR IMAGEM</span><small data-photo-name>PNG ou JPG · até 2 MB · opcional · sem foto, é exibida a inicial</small></span><input name="photo" type="file" accept="image/png,image/jpeg"></label><label><span>NICKNAME</span><input name="nickname" required maxlength="50" placeholder="Nome utilizado no jogo"></label><label><span>NOME COMPLETO</span><input name="fullName" required maxlength="150" placeholder="Nome completo do jogador"></label><label><span>RIOT ID</span><input name="riotId" required maxlength="22" placeholder="nome#tag"><small class="dialog-fields__hint">Nome de 3 a 16 caracteres e tag de 3 a 5 letras ou números.</small></label><label><span>FUNÇÃO PRINCIPAL</span><select name="role" required><option>CONTROLADOR</option><option>DUELISTA</option><option>INICIADOR</option><option>SENTINELA</option></select></label><p class="dialog-info dialog-info--consent">Ao cadastrar o jogador, o treinador declara ter obtido o consentimento dele para o registro destes dados e o uso de suas gravações nas revisões da equipe (LGPD).</p></div><footer><button class="module-danger" type="button" data-proto-action="open-remove-player" data-player-delete>EXCLUIR JOGADOR</button><button class="module-secondary" type="button" data-proto-action="close-player-dialog">CANCELAR</button><button class="module-primary" type="button" data-proto-action="save-player">SALVAR JOGADOR</button></footer></form></dialog>
+        <dialog class="module-dialog confirm-dialog" data-remove-player-dialog><form method="dialog"><header><div><span class="module-label">EXCLUSÃO DE JOGADOR</span><h2>Excluir ${player ? player.name : ""}?</h2></div><button type="button" data-proto-action="close-remove-player" aria-label="Fechar">×</button></header><div class="dialog-fields">${hasData ? `<p>${player.name} possui <strong>${player.matches} participações</strong> registradas em partidas. Para preservar os resultados da equipe, a aplicação manterá o histórico sem identificar o jogador:</p><ul class="cascade-list"><li>nome completo e nickname substituídos por “Jogador removido 01”</li><li>Riot ID removido</li><li>gravações do jogador e arquivos de vídeo excluídos; nas sessões, o POV passa a indicar “Gravação removida”</li><li>participações, estatísticas e anotações preservadas</li></ul><p class="dialog-info">O jogador deixa o elenco e não poderá ser selecionado em novas partidas. Esta ação não pode ser desfeita.</p>` : `<p>${player ? player.name : ""} não possui participações registradas em partidas.</p><p class="dialog-info">A exclusão é definitiva: os dados do jogador serão removidos e não poderão ser recuperados.</p>`}</div><footer><button class="module-secondary" type="button" data-proto-action="close-remove-player">CANCELAR</button><button class="module-danger" type="button" data-proto-action="remove-player">EXCLUIR JOGADOR</button></footer></form></dialog>`
     });
   }
 
@@ -730,8 +740,8 @@
   }
 
   const systemUsers = [
-    { name: "Lucas Ferreira", username: "lucas.ferreira", email: "lucas@rushone.gg", team: "RUSH ONE ESPORTS", status: "ATIVO", access: "ONTEM · 21:18" },
-    { name: "Rafael Nunes", username: "rafael.nunes", email: "rafael@azure.gg", team: "AZURE BEARS", status: "ATIVO", access: "23 SET · 18:05" },
+    { name: "Lucas Ferreira", username: "lucas.ferreira", email: "lucas@azurebears.gg", team: "AZURE BEARS", status: "ATIVO", access: "ONTEM · 21:18" },
+    { name: "Rafael Nunes", username: "rafael.nunes", email: "rafael@azure.gg", team: "WOLF GAMING", status: "ATIVO", access: "23 SET · 18:05" },
     { name: "Bianca Alves", username: "bianca.alves", email: "bianca@caap.gg", team: "CAAP HELLHOUNDS", status: "INATIVO", access: "14 AGO · 11:30" },
     { name: "Paulo Mendes", username: "paulo.mendes", email: "paulo@unirv.gg", team: "", status: "ATIVO", access: "HOJE · 08:40" },
     { name: "Marina Costa", username: "marina.costa", email: "marina@unirv.gg", team: "", status: "INATIVO", access: "02 JUL · 09:12" }
@@ -766,18 +776,85 @@
     ["SE", "Sergipe"],
     ["TO", "Tocantins"]
   ];
-  const stateOptions = (selected = "GO") => brazilianStates.map(([uf, name]) => `<option value="${uf}"${uf === selected ? " selected" : ""}>${uf} — ${name}</option>`).join("");
+  const stateOptions = (selected = "") => `<option value=""${selected ? "" : " selected"}>Selecione o Estado</option>` + brazilianStates.map(([uf, name]) => `<option value="${uf}"${uf === selected ? " selected" : ""}>${name}</option>`).join("");
+  const stateField = (selected = "", id = "") => `<div class="state-picker" data-state-picker>
+      <select${id ? ` id="${id}"` : ""} name="state" required tabindex="-1" aria-hidden="true">${stateOptions(selected)}</select>
+      <button type="button" class="state-picker__button" data-state-toggle aria-haspopup="listbox" aria-expanded="false"><span data-state-label></span><i aria-hidden="true">▾</i></button>
+      <ul class="state-picker__list" role="listbox" hidden>${brazilianStates.map(([uf, name]) => `<li><button type="button" role="option" data-state-option="${uf}"><img src="assets/UF/${uf}.png" alt=""><span>${name}</span></button></li>`).join("")}</ul>
+    </div>`;
+  function syncStatePickers(root = document) {
+    root.querySelectorAll("[data-state-picker]").forEach((picker) => {
+      const select = picker.querySelector("select");
+      const label = picker.querySelector("[data-state-label]");
+      const found = brazilianStates.find(([uf]) => uf === select.value);
+      label.innerHTML = found ? `<img src="assets/UF/${found[0]}.png" alt=""><span>${found[1]}</span>` : '<span class="is-placeholder">Selecione o Estado</span>';
+      picker.querySelectorAll("[data-state-option]").forEach((option) => option.setAttribute("aria-selected", String(option.dataset.stateOption === select.value)));
+    });
+  }
+  document.addEventListener("click", (event) => {
+    const tToggle = event.target.closest("[data-team-toggle]");
+    const tOption = event.target.closest("[data-team-option]");
+    document.querySelectorAll(".team-picker__list").forEach((list) => { if (!tToggle || !list.parentElement.contains(tToggle)) { list.hidden = true; list.parentElement.querySelector("[data-team-toggle]").setAttribute("aria-expanded", "false"); } });
+    if (tToggle) { const list = tToggle.parentElement.querySelector(".team-picker__list"); list.hidden = !list.hidden; tToggle.setAttribute("aria-expanded", String(!list.hidden)); }
+    if (tOption) {
+      const picker = tOption.closest("[data-team-picker]");
+      const select = picker.querySelector("select");
+      select.value = tOption.dataset.teamOption;
+      select.setCustomValidity("");
+      picker.querySelector(".team-picker__value").outerHTML = `<span class="team-picker__value">${tOption.innerHTML}</span>`;
+      picker.querySelectorAll("[data-team-option]").forEach((o) => o.setAttribute("aria-selected", String(o === tOption)));
+      picker.querySelector(".team-picker__list").hidden = true;
+    }
+  });
+  document.addEventListener("change", (event) => {
+    const free = event.target.closest("[data-opponent-free]");
+    if (free) {
+      const field = free.closest(".opponent-field");
+      const picker = field.querySelector("[data-team-picker]");
+      const input = field.querySelector(".opponent-free");
+      picker.classList.toggle("is-hidden", free.checked);
+      input.classList.toggle("is-hidden", !free.checked);
+      picker.querySelector("select").required = !free.checked;
+      input.required = free.checked;
+      if (free.checked) input.focus();
+    }
+    const radio = event.target.closest(".map-card input, .segmented__item input");
+    if (radio) {
+      radio.closest(".map-cards, .segmented").querySelectorAll("label").forEach((l) => l.classList.toggle("is-selected", l.contains(radio)));
+      if (radio.name === "map") { const out = document.querySelector("[data-map-selected]"); if (out) out.textContent = radio.value.toLocaleUpperCase("pt-BR"); }
+    }
+  });
+  document.addEventListener("click", (event) => {
+    const toggle = event.target.closest("[data-state-toggle]");
+    const option = event.target.closest("[data-state-option]");
+    document.querySelectorAll("[data-state-picker] .state-picker__list").forEach((list) => {
+      if (!toggle || !list.closest("[data-state-picker]").contains(toggle)) { list.hidden = true; list.closest("[data-state-picker]").querySelector("[data-state-toggle]").setAttribute("aria-expanded", "false"); }
+    });
+    if (toggle) {
+      const list = toggle.closest("[data-state-picker]").querySelector(".state-picker__list");
+      list.hidden = !list.hidden;
+      toggle.setAttribute("aria-expanded", String(!list.hidden));
+      if (!list.hidden) list.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest" });
+    }
+    if (option) {
+      const picker = option.closest("[data-state-picker]");
+      const select = picker.querySelector("select");
+      select.value = option.dataset.stateOption;
+      select.setCustomValidity("");
+      syncStatePickers(picker.parentElement);
+    }
+  });
 
   const managedTeams = [
-    { name: "RUSH ONE ESPORTS", tag: "RSH", state: "GO", coach: "Lucas Ferreira", logo: assets.rushone, players: 5, matches: 18 },
-    { name: "AZURE BEARS", tag: "AZR", state: "SP", coach: "Rafael Nunes", logo: assets.azure, players: 5, matches: 9 },
+    { name: "AZURE BEARS", tag: "AZR", state: "GO", coach: "Lucas Ferreira", logo: assets.azure, players: 5, matches: 18 },
+    { name: "WOLF GAMING", tag: "WLF", state: "SP", coach: "Rafael Nunes", logo: assets.wolf, players: 5, matches: 9 },
     { name: "CAAP HELLHOUNDS", tag: "CAAP", state: "MG", coach: "Bianca Alves", logo: assets.caap, players: 6, matches: 4 }
   ];
 
   const reviewSessions = [
-    { status: "EM ANDAMENTO", tone: "progress", opponent: "AZURE BEARS", date: "21 MAR 2026", map: "ASCENT", progress: "4/5 POVs", action: "CONTINUAR", route: "revisao", logo: assets.azure },
+    { status: "EM ANDAMENTO", tone: "progress", opponent: "WOLF GAMING", date: "21 MAR 2026", map: "ASCENT", progress: "4/5 POVs", action: "CONTINUAR", route: "revisao", logo: assets.wolf },
     { status: "FINALIZADA", tone: "done", opponent: "GREEN OWLS", date: "28 MAR 2026", map: "HAVEN", progress: "4/5 POVs", action: "CONSULTAR", route: "revisao?finalizada=1", logo: assets.greenOwls },
-    { status: "SEM SESSÃO", tone: "pending", opponent: "CAAP HELLHOUNDS", date: "14 MAR 2026", map: "LOTUS", progress: "0/5 POVs", action: "ENVIAR GRAVAÇÕES", route: "gravacoes", logo: assets.caap },
+    { status: "SEM SESSÃO", tone: "pending", opponent: "CAAP HELLHOUNDS", date: "14 MAR 2026", map: "LOTUS", progress: "2/3 POVs", action: "ENVIAR GRAVAÇÕES", route: "gravacoes", logo: assets.caap },
     { status: "FINALIZADA", tone: "done", opponent: "A2E UFF", date: "07 MAR 2026", map: "SPLIT", progress: "5/5 POVs", action: "CONSULTAR", route: "revisao?finalizada=1", logo: assets.a2e },
     { status: "FINALIZADA", tone: "done", opponent: "UFU SAINTS", date: "28 FEV 2026", map: "BIND", progress: "5/5 POVs", action: "CONSULTAR", route: "revisao?finalizada=1", logo: assets.ufu }
   ];
@@ -797,6 +874,38 @@
       </div>
       <div class="app-toast" role="status" aria-live="polite" data-toast></div>
     </section>`;
+  }
+
+  function focusShell({ screen, activeNav, content }) {
+    return `<section class="dashboard-screen module-screen focus-screen" data-screen="${screen}">
+      ${dashboardHeader(activeNav)}
+      <main class="focus-main">${content}</main>
+      <div class="app-toast" role="status" aria-live="polite" data-toast></div>
+    </section>`;
+  }
+
+  // preparação automática: sincronização dos POVs em segundo plano (OCR), sem ação do treinador
+  function preparingScreen() {
+    const hold = getHashParams().has("parar");
+    window.clearTimeout(window.__vodPrep);
+    if (!hold) window.__vodPrep = window.setTimeout(() => {
+      if (getRoute() !== "preparando") return;
+      prototypeState.sync = syncScenario("validada");
+      navigate("revisao");
+    }, 6200);
+    const steps = [["Verificando as gravações", "4 POVs em MP4 (H.264)"], ["Lendo o relógio da rodada", "Reconhecimento óptico (OCR) do placar e do tempo"], ["Alinhando os pontos de vista", "Calculando o deslocamento de cada gravação"], ["Montando a linha do tempo", "Preparando a reprodução sincronizada"]];
+    return focusShell({ screen: "preparando", activeNav: "reviews", content: `
+      <section class="prep-screen${hold ? " is-hold" : ""}" aria-live="polite">
+        <div class="prep-screen__bg" aria-hidden="true">${["Ascent"].map((m) => `<img src="${mapImages[m]}" alt="">`).join("")}</div>
+        <div class="prep-card">
+          <div class="prep-orbit" aria-hidden="true"><span></span><span></span><span></span><b>${["André", "kick", "pim", "greinzera"].map((n) => playerAvatar(n)).join("")}</b></div>
+          <span class="module-label">AZURE BEARS × WOLF GAMING · ASCENT</span>
+          <h1>Preparando a revisão</h1>
+          <p>Estamos sincronizando automaticamente os pontos de vista. Isso leva alguns segundos.</p>
+          <div class="prep-progress" aria-hidden="true"><i></i></div>
+          <ol class="prep-steps">${steps.map(([t, d], i) => `<li style="--i:${i}"><span class="prep-steps__icon" aria-hidden="true"></span><div><strong>${t}</strong><small>${d}</small></div></li>`).join("")}</ol>
+        </div>
+      </section>` });
   }
 
   const adminSections = [
@@ -851,7 +960,7 @@
       <td><span class="user-team"><strong>${user.team || "SEM EQUIPE"}</strong><small>${user.team ? "TREINADOR RESPONSÁVEL" : "ATRIBUIÇÃO EM EQUIPES"}</small></span></td>
       <td><span class="status-badge status-badge--${user.status === "ATIVO" ? "success" : "muted"}" data-user-status>${user.status}</span></td>
       <td>${user.access}</td>
-      <td class="module-table__actions"><button type="button" data-edit-user="${index}" aria-label="Editar treinador" title="Editar treinador"></button><button type="button" data-toggle-user aria-label="${user.status === "ATIVO" ? "Desativar" : "Ativar"} treinador" title="${user.status === "ATIVO" ? "Desativar" : "Ativar"} treinador"></button><button type="button" data-delete-user aria-label="Excluir treinador" title="${!user.team ? "Excluir treinador" : "Disponível somente para treinador sem equipe vinculada"}" ${!user.team ? "" : "disabled"}></button></td>
+      <td class="module-table__actions"><button type="button" data-edit-user="${index}" aria-label="Editar treinador" title="Editar treinador"></button><button type="button" data-toggle-user aria-label="${user.status === "ATIVO" ? "Desativar" : "Ativar"} treinador" title="${user.status === "ATIVO" ? "Desativar" : "Ativar"} treinador"></button></td>
     </tr>`;
   }
 
@@ -904,7 +1013,7 @@
   function coachOptions(currentCoach = "") {
     const available = systemUsers.filter((user) => (user.status === "ATIVO" && !user.team) || user.name === currentCoach);
     if (!available.length) return '<option value="">Não há treinadores ativos sem equipe</option>';
-    return available.map((user) => `<option>${user.name}</option>`).join("");
+    return `<option value=""${currentCoach ? "" : " selected"}>Selecione o treinador</option>` + available.map((user) => `<option${user.name === currentCoach ? " selected" : ""}>${user.name}</option>`).join("");
   }
 
   function usersScreen() {
@@ -930,7 +1039,7 @@
         empty: "Nenhum treinador encontrado."
       }))
     ].join("");
-    const dialogs = `<dialog class="module-dialog" data-team-dialog><form method="dialog" data-team-form><header><div><span class="module-label">CADASTRO ADMINISTRATIVO</span><h2 data-team-dialog-title>NOVA EQUIPE</h2></div><button type="button" data-close-team-dialog aria-label="Fechar">×</button></header><div class="dialog-fields"><label><span>NOME DA EQUIPE</span><input name="name" required placeholder="Nome da equipe"></label><label><span>TAG / SIGLA</span><input name="tag" required maxlength="4" placeholder="TAG"></label><label><span>ESTADO (UF)</span><select name="state" required>${stateOptions()}</select></label><label class="logo-field"><span>LOGO</span><span class="logo-upload"><span class="module-secondary">SELECIONAR IMAGEM</span><small data-logo-name>PNG ou JPG · até 2 MB · opcional</small></span><input name="logo" type="file" accept="image/png,image/jpeg"></label><label><span>TREINADOR RESPONSÁVEL</span><select name="coach" required>${coachOptions()}</select></label><p class="dialog-info">Somente treinadores ativos e sem equipe vinculada podem ser atribuídos. Cada treinador é responsável por, no máximo, uma equipe.</p></div><footer><button class="module-secondary" type="button" data-close-team-dialog>CANCELAR</button><button class="module-primary" type="submit">SALVAR EQUIPE</button></footer></form></dialog>
+    const dialogs = `<dialog class="module-dialog" data-team-dialog><form method="dialog" data-team-form novalidate><header><div><span class="module-label">CADASTRO ADMINISTRATIVO</span><h2 data-team-dialog-title>NOVA EQUIPE</h2></div><button type="button" data-close-team-dialog aria-label="Fechar">×</button></header><div class="dialog-fields"><label><span>NOME DA EQUIPE</span><input name="name" required placeholder="Nome da equipe"></label><label><span>TAG / SIGLA</span><input name="tag" required maxlength="4" placeholder="TAG"></label><label><span>ESTADO</span>${stateField()}</label><label class="logo-field"><span>LOGO</span><span class="logo-upload"><span class="module-secondary">SELECIONAR IMAGEM</span><small data-logo-name>PNG ou JPG · até 2 MB · opcional</small></span><input name="logo" type="file" accept="image/png,image/jpeg"></label><label><span>TREINADOR RESPONSÁVEL</span><select name="coach" required>${coachOptions()}</select></label></div><footer><button class="module-secondary" type="button" data-close-team-dialog>CANCELAR</button><button class="module-primary" type="submit">SALVAR EQUIPE</button></footer></form></dialog>
       <dialog class="module-dialog" data-user-dialog><form method="dialog" data-user-form><header><div><span class="module-label">CONTA DE TREINADOR</span><h2 data-user-dialog-title>NOVO TREINADOR</h2></div><button type="button" data-close-user-dialog aria-label="Fechar">×</button></header><div class="dialog-fields"><label><span>NOME COMPLETO</span><input name="name" required placeholder="Nome do treinador"></label><label><span>NOME DE USUÁRIO</span><input name="username" required placeholder="nome.sobrenome" autocomplete="off"></label><label><span>E-MAIL</span><input name="email" type="email" required placeholder="treinador@equipe.gg"></label><div class="dialog-fields__pair" data-password-fields><label><span>SENHA INICIAL</span><input name="password" type="password" autocomplete="new-password" placeholder="Senha inicial"></label><label><span>CONFIRMAR SENHA</span><input name="passwordConfirm" type="password" autocomplete="new-password" placeholder="Repita a senha"></label><p class="dialog-fields__hint dialog-fields__hint--policy">Mínimo de 8 caracteres, com letras e números.</p><p class="dialog-fields__hint" data-password-hint hidden>Deixe em branco para manter a senha atual.</p></div><p class="dialog-info">A equipe do treinador é atribuída no cadastro de equipes.</p></div><footer><button class="module-secondary" type="button" data-close-user-dialog>CANCELAR</button><button class="module-primary" type="submit" data-user-submit>SALVAR TREINADOR</button></footer></form></dialog>
         <dialog class="module-dialog confirm-dialog" data-confirm-dialog aria-labelledby="confirm-dialog-title"><div class="confirm-dialog__body"><span class="module-label" data-confirm-eyebrow></span><h2 id="confirm-dialog-title" data-confirm-title></h2><p data-confirm-message></p><dl class="confirm-dialog__details" data-confirm-details></dl></div><footer><button class="module-secondary" type="button" data-confirm-cancel>CANCELAR</button><button class="module-primary" type="button" data-confirm-ok>CONFIRMAR</button></footer></dialog>`;
     return adminShell({ active, panels, dialogs });
@@ -942,12 +1051,44 @@
       activeNav: "reviews",
       showHeading: false,
       content: `<section class="module-stats" aria-label="Resumo das revisões"><article><span>EM ANDAMENTO</span><strong>1</strong><small>Sessões não finalizadas</small></article><article><span>FINALIZADAS</span><strong>12</strong><small>Temporada 2026</small></article><article><span>SEM SESSÃO</span><strong>1</strong><small>Partida sem gravações enviadas</small></article></section>
-        <section class="review-session-list" aria-label="Sessões de revisão">${reviewSessions.map((session) => `<article class="review-session-card"><div class="review-session-card__status"><span class="status-badge status-badge--${session.tone}">${session.status}</span><small>${session.date}</small></div><div class="review-session-card__match"><img src="${assets.rushone}" alt="RUSH ONE"><span><small>RUSH ONE</small><strong>VS</strong></span><img src="${session.logo}" alt="${session.opponent}"><span><strong>${session.opponent}</strong><small>${session.map}</small></span></div><div class="review-session-card__progress"><span>${session.progress}</span><i><b style="width:${Number(session.progress[0]) * 20}%"></b></i></div><button class="module-secondary" type="button" data-route="${session.route}">${session.action}</button></article>`).join("")}</section>`
+        <section class="review-session-list" aria-label="Sessões de revisão">${reviewSessions.map((session) => `<article class="review-session-card"><div class="review-session-card__status"><span class="status-badge status-badge--${session.tone}">${session.status}</span><small>${session.date}</small></div><div class="review-session-card__match"><img src="${assets.azure}" alt="AZURE BEARS"><span><small>AZURE BEARS</small><strong>VS</strong></span><img src="${session.logo}" alt="${session.opponent}"><span><strong>${session.opponent}</strong><small>${session.map}</small></span></div><div class="review-session-card__progress"><span>${session.progress}</span><i><b style="width:${Number(session.progress[0]) * 20}%"></b></i></div><button class="module-secondary" type="button" data-route="${session.route}">${session.action}</button></article>`).join("")}</section>`
     });
   }
 
-  function flowSteps(current, labels) {
-    return `<ol class="flow-steps" aria-label="Etapas do fluxo">${labels.map((label, index) => `<li class="${index + 1 === current ? "is-current" : index + 1 < current ? "is-done" : ""}"><span>${index + 1}</span>${label}</li>`).join("")}</ol>`;
+  function flowSteps(current, labels, hints = []) {
+    const pct = labels.length > 1 ? ((Math.min(current, labels.length) - 1) / (labels.length - 1)) * 100 : 0;
+    return `<nav class="wizard-steps" aria-label="Etapas do cadastro" style="--wizard-progress:${pct}%">
+      <div class="wizard-steps__track" aria-hidden="true"><i></i></div>
+      <ol>${labels.map((label, index) => {
+        const n = index + 1;
+        const state = n === current ? "is-current" : n < current ? "is-done" : "";
+        return `<li class="${state}"${n === current ? ' aria-current="step"' : ""}><span class="wizard-steps__dot">${n < current ? "✓" : n}</span><span class="wizard-steps__text"><small>ETAPA ${n} DE ${labels.length}</small><strong>${label}</strong>${hints[index] ? `<em>${hints[index]}</em>` : ""}</span></li>`;
+      }).join("")}</ol>
+    </nav>`;
+  }
+
+  // equipes cadastradas que podem ser adversárias (exclui a própria equipe)
+  const opponentTeams = () => managedTeams.filter((team) => team.name !== "AZURE BEARS");
+  function opponentPicker(draft) {
+    const teams = opponentTeams();
+    const free = draft.freeOpponent || !teams.length;
+    const current = teams.find((t) => t.name === draft.opponent);
+    const esc = (v) => String(v || "").replace(/"/g, "&quot;");
+    return `<div class="opponent-field">
+      <div class="team-picker${free ? " is-hidden" : ""}" data-team-picker>
+        <select name="opponentTeam" tabindex="-1" aria-hidden="true"${free ? "" : " required"}><option value="">Selecione o adversário</option>${teams.map((t) => `<option value="${t.name}"${current && current.name === t.name ? " selected" : ""}>${t.name}</option>`).join("")}</select>
+        <button type="button" class="team-picker__button" data-team-toggle aria-haspopup="listbox" aria-expanded="false">${current ? `<span class="team-picker__value"><img src="${current.logo}" alt=""><span><strong>${current.name}</strong><small>${current.tag} · ${current.state}</small></span></span>` : '<span class="team-picker__value is-placeholder">Selecione o adversário</span>'}<i aria-hidden="true">▾</i></button>
+        <ul class="team-picker__list" role="listbox" hidden>${teams.map((t) => `<li><button type="button" role="option" data-team-option="${t.name}" aria-selected="${Boolean(current && current.name === t.name)}"><img src="${t.logo}" alt=""><span><strong>${t.name}</strong><small>${t.tag} · ${t.state}</small></span></button></li>`).join("")}</ul>
+      </div>
+      <input class="opponent-free${free ? "" : " is-hidden"}" name="opponent" maxlength="100" value="${free ? esc(draft.opponent) : ""}" placeholder="Nome da equipe adversária"${free ? " required" : ""}>
+      <label class="check-pill"><input type="checkbox" data-opponent-free${free ? " checked" : ""}${teams.length ? "" : " disabled"}><span class="check-pill__box" aria-hidden="true"></span><span>Não registrada?<small>${teams.length ? "Marque para informar uma equipe que não está cadastrada na plataforma." : "Nenhuma equipe cadastrada: informe o nome do adversário."}</small></span></label>
+    </div>`;
+  }
+  function mapCards(selected) {
+    return `<div class="map-cards" role="radiogroup" aria-label="Mapa da partida">${mapOptions.map((m) => `<label class="map-card${m === selected ? " is-selected" : ""}"><input type="radio" name="map" value="${m}"${m === selected ? " checked" : ""}><span class="map-card__media"><img src="${mapImages[m]}" alt="" onerror="this.remove()"></span><span class="map-card__shade" aria-hidden="true"></span><span class="map-card__check" aria-hidden="true">✓</span><strong>${m.toLocaleUpperCase("pt-BR")}</strong></label>`).join("")}</div>`;
+  }
+  function typeChips(selected) {
+    return `<div class="segmented" role="radiogroup" aria-label="Tipo da partida">${[["CAMPEONATO", "Oficial"], ["AMISTOSO", "Entre equipes"], ["TREINO", "Interno"]].map(([t, h]) => `<label class="segmented__item${t === selected ? " is-selected" : ""}"><input type="radio" name="type" value="${t}"${t === selected ? " checked" : ""}><strong>${t.charAt(0) + t.slice(1).toLocaleLowerCase("pt-BR")}</strong><small>${h}</small></label>`).join("")}</div>`;
   }
 
   function initMatchDraft() {
@@ -955,8 +1096,8 @@
     const match = editing ? findMatch(prototypeState.selectedMatch) : null;
     prototypeState.matchStep = 1;
     prototypeState.matchDraft = match
-      ? { mode: "edit", id: match.id, opponent: match.opponent, event: match.event, datetime: match.datetime, type: match.type, map: match.map, status: match.status }
-      : { mode: "new", id: null, opponent: "", event: "", datetime: "", type: "CAMPEONATO", map: "Haven", status: "waiting" };
+      ? { mode: "edit", id: match.id, opponent: match.opponent, event: match.event, datetime: match.datetime, type: match.type, map: match.map, status: match.status, freeOpponent: !managedTeams.some((t) => t.name === match.opponent) }
+      : { mode: "new", id: null, opponent: "", event: "", datetime: "", type: "CAMPEONATO", map: "Haven", status: "waiting", freeOpponent: false };
     prototypeState.participants = new Set(match ? match.participants : []);
   }
 
@@ -964,15 +1105,41 @@
     const step = prototypeState.matchStep;
     const draft = prototypeState.matchDraft;
     const editing = draft.mode === "edit";
-    const locked = editing && draft.status === "finalized";
+    const locked = editing && draft.status !== "waiting";
     const selected = rosterPlayers.filter((player) => prototypeState.participants.has(player.name));
     const esc = (v) => String(v || "").replace(/"/g, "&quot;");
     const content = step === 1 ? `
-      <section class="module-card prototype-form"><header><span class="module-label">DADOS DA PARTIDA</span><strong>Contexto competitivo</strong></header><form class="prototype-form__grid" data-match-form novalidate><label>ADVERSÁRIO<input name="opponent" required maxlength="100" value="${esc(draft.opponent)}" placeholder="Nome da equipe adversária"></label><label>EVENTO / COMPETIÇÃO<input name="event" maxlength="100" value="${esc(draft.event)}" placeholder="Opcional"></label><label>DATA E HORA<input name="datetime" type="datetime-local" required value="${esc(draft.datetime)}"></label><label>TIPO<select name="type">${["CAMPEONATO", "AMISTOSO", "TREINO"].map((t) => `<option${t === draft.type ? " selected" : ""}>${t}</option>`).join("")}</select></label><label class="is-wide">MAPA<select name="map">${mapOptions.map((m) => `<option${m === draft.map ? " selected" : ""}>${m}</option>`).join("")}</select></label></form>${locked ? '<p class="dialog-info">A sessão de revisão desta partida está finalizada. Os dados podem ser alterados, e os indicadores da equipe e dos jogadores serão recalculados.</p>' : ""}</section>` : step === 2 ? `
-      <section class="module-card participant-picker"><header><div><span class="module-label">PARTICIPANTES DA EQUIPE</span><strong>${selected.length} de 5 jogadores selecionados</strong><small>Somente jogadores do elenco da RUSH ONE podem participar.</small></div><span class="status-badge status-badge--${selected.length ? "success" : "pending"}">${locked ? "SOMENTE CONSULTA" : selected.length ? "SELEÇÃO VÁLIDA" : "SELECIONE AO MENOS 1"}</span></header><div class="participant-picker__list">${rosterPlayers.map((player) => { const checked = prototypeState.participants.has(player.name); return `<button type="button" class="participant-option${checked ? " is-selected" : ""}" data-proto-action="toggle-participant" data-player="${player.name}" aria-pressed="${checked}"${locked ? " disabled" : ""}><img src="${player.icon}" alt=""><span><strong>${player.name}</strong><small>${player.role}</small></span><i>${checked ? "✓" : "+"}</i></button>`; }).join("")}</div>${locked ? '<p class="dialog-info">Os participantes não podem ser alterados porque a sessão de revisão está finalizada.</p>' : editing ? '<p class="dialog-info">Remover um participante exclui sua gravação, suas estatísticas e as anotações associadas a ele.</p>' : ""}</section>` : step === 3 ? `
+      <form class="match-form" data-match-form novalidate>
+        <section class="module-card match-form__section"><header class="match-form__head"><span class="match-form__index">01</span><div><span class="module-label">ADVERSÁRIO E CONTEXTO</span><strong>Contra quem a equipe jogou?</strong></div></header>
+          <div class="match-form__grid">
+            <div class="field-block is-wide"><span class="field-block__label">ADVERSÁRIO <b>*</b></span>${opponentPicker(draft)}</div>
+            <label class="field-block"><span class="field-block__label">EVENTO / COMPETIÇÃO</span><input name="event" maxlength="100" value="${esc(draft.event)}" placeholder="Ex.: VPL 2026 · Semana 3"><small class="field-block__hint">Opcional</small></label>
+            <label class="field-block"><span class="field-block__label">DATA E HORA <b>*</b></span><input name="datetime" type="datetime-local" required value="${esc(draft.datetime)}"><small class="field-block__hint">Não pode ser posterior ao momento atual</small></label>
+            <div class="field-block is-wide"><span class="field-block__label">TIPO <b>*</b></span>${typeChips(draft.type)}</div>
+          </div>
+        </section>
+        <section class="module-card match-form__section"><header class="match-form__head"><span class="match-form__index">02</span><div><span class="module-label">MAPA</span><strong>Em qual mapa a partida foi disputada?</strong></div><span class="match-form__selected" data-map-selected>${draft.map.toLocaleUpperCase("pt-BR")}</span></header>${mapCards(draft.map)}</section>
+      </form>${locked ? '<p class="dialog-info">A sessão de revisão desta partida já foi criada. Os dados da partida podem ser alterados; os participantes ficam somente para consulta.</p>' : ""}` : step === 2 ? `
+      <section class="module-card participant-picker"><header><div><span class="module-label">PARTICIPANTES DA EQUIPE</span><strong>${selected.length} de 5 jogadores selecionados</strong><small>Somente jogadores do elenco da AZURE BEARS podem participar.</small></div><span class="status-badge status-badge--${selected.length ? "success" : "pending"}">${locked ? "SOMENTE CONSULTA" : selected.length ? "SELEÇÃO VÁLIDA" : "SELECIONE AO MENOS 1"}</span></header><div class="participant-picker__list">${rosterPlayers.map((player) => { const checked = prototypeState.participants.has(player.name); return `<button type="button" class="participant-option${checked ? " is-selected" : ""}" data-proto-action="toggle-participant" data-player="${player.name}" aria-pressed="${checked}"${locked ? " disabled" : ""}>${playerAvatar(player.name)}<span><strong>${player.name}</strong><small>${player.role}</small></span><i>${checked ? "✓" : "+"}</i></button>`; }).join("")}</div>${locked ? '<p class="dialog-info">Os participantes não podem ser alterados porque a sessão de revisão desta partida já foi criada.</p>' : editing ? '<p class="dialog-info">Remover um participante exclui a gravação enviada para ele.</p>' : ""}</section>` : step === 3 ? `
       <section class="module-card readiness-card"><span class="module-label">CONFIRMAÇÃO</span><h2>${editing ? "Salvar as alterações da partida?" : "Cadastrar a partida?"}</h2><dl class="confirm-dialog__details match-summary"><dt>Adversário</dt><dd>${esc(draft.opponent)}</dd><dt>Evento</dt><dd>${esc(draft.event) || "—"}</dd><dt>Data e hora</dt><dd>${matchDate(draft.datetime, true)}</dd><dt>Tipo</dt><dd>${draft.type}</dd><dt>Mapa</dt><dd>${draft.map}</dd><dt>Participantes</dt><dd>${selected.map((p) => p.name).join(", ")}</dd></dl><p>${editing ? (locked ? "Os indicadores da equipe e dos jogadores serão recalculados com os dados alterados." : "As gravações e as estatísticas dos participantes mantidos são preservadas.") : "A partida será apresentada como <strong>aguardando gravações</strong>. O placar final é registrado na finalização da revisão."}</p></section>` : `
       <section class="module-card match-created"><span>✓</span><h2>${editing ? "PARTIDA ALTERADA" : "PARTIDA CADASTRADA"}</h2><p>${esc(draft.opponent)} · ${draft.map} · ${selected.length} participante(s). ${editing ? "" : "O próximo passo é enviar as gravações de cada participante."}</p><div><button class="module-secondary" type="button" data-route="partidas">VER PARTIDAS</button><button class="module-primary" type="button" data-proto-action="open-recordings" data-match="${draft.id}">${editing ? "GRAVAÇÕES" : "ENVIAR GRAVAÇÕES"}</button></div></section>`;
-    return moduleShell({ screen: "nova-partida", activeNav: "matches", eyebrow: editing ? "PARTIDAS · ALTERAÇÃO" : "PARTIDAS · NOVO REGISTRO", title: editing ? "EDITAR PARTIDA" : "NOVA PARTIDA", description: "", actions: step < 4 ? '<button class="module-secondary" type="button" data-route="partidas">CANCELAR</button>' : "", content: `${flowSteps(step, ["Dados", "Participantes", "Confirmação", "Concluído"])}${content}${step < 4 ? `<footer class="flow-actions"><button class="module-secondary" type="button" data-proto-action="match-back" ${step === 1 ? "disabled" : ""}>VOLTAR</button><button class="module-primary" type="button" data-proto-action="match-next" ${step === 2 && !selected.length ? "disabled" : ""}>${step === 3 ? (editing ? "SALVAR ALTERAÇÕES" : "CADASTRAR PARTIDA") : "CONTINUAR"}</button></footer>` : ""}` });
+    return moduleShell({ screen: "nova-partida", activeNav: "matches", eyebrow: editing ? "PARTIDAS · ALTERAÇÃO" : "PARTIDAS · NOVO REGISTRO", title: editing ? "EDITAR PARTIDA" : "NOVA PARTIDA", description: "", actions: step < 4 ? '<button class="module-secondary" type="button" data-route="partidas">CANCELAR</button>' : "", content: `${flowSteps(step, ["Dados da partida", "Participantes", "Confirmação", "Concluído"], ["Adversário, data, tipo e mapa", "De 1 a 5 jogadores", "Revise as informações", editing ? "Partida alterada" : "Partida cadastrada"])}${content}${step < 4 ? `<footer class="flow-actions"><button class="module-secondary" type="button" data-proto-action="match-back" ${step === 1 ? "disabled" : ""}>VOLTAR</button><button class="module-primary" type="button" data-proto-action="match-next" ${step === 2 && !selected.length ? "disabled" : ""}>${step === 3 ? (editing ? "SALVAR ALTERAÇÕES" : "CADASTRAR PARTIDA") : "CONTINUAR"}</button></footer>` : ""}` });
+  }
+
+  function scoreboardDialog() {
+    const match = findMatch("m2");
+    const agents = ["Jett", "Omen", "Killjoy", "Sova", "Viper"];
+    const rows = homeScoreboard.slice(0, 5).map((player, index) => {
+      const missing = prototypeState.scoreboardState === "incomplete" && index === 4;
+      return `<div class="score-entry__row${missing ? " is-missing" : ""}" data-score-row="${player.player}"><span>${playerAvatar(player.player)}<b class="score-entry__name">${player.player}</b><select aria-label="Agente de ${player.player}" data-score-agent>${missing ? '<option selected>Selecione</option>' : ""}${agents.map((agent) => `<option${!missing && agent === player.agent ? " selected" : ""}>${agent}</option>`).join("")}</select></span><input value="${missing ? "" : player.k}" placeholder="—" inputmode="numeric" aria-label="Abates de ${player.player}" data-score-stat><input value="${missing ? "" : player.d}" placeholder="—" inputmode="numeric" aria-label="Mortes de ${player.player}" data-score-stat><input value="${missing ? "" : player.a}" placeholder="—" inputmode="numeric" aria-label="Assistências de ${player.player}" data-score-stat><input value="${missing ? "" : player.fk}" placeholder="—" inputmode="numeric" aria-label="Primeiros abates de ${player.player}" data-score-stat><b data-score-diff>${missing ? "—" : player.diff}</b><span class="status-badge status-badge--${missing ? "pending" : "success"}" data-score-status>${missing ? "PENDENTE" : "COMPLETO"}</span></div>`;
+    }).join("");
+    return `<dialog class="module-dialog scoreboard-dialog" data-scoreboard-dialog aria-labelledby="scoreboard-dialog-title"><form method="dialog" novalidate>
+      <header><div><span class="module-label">FINALIZAR REVISÃO · ETAPA FINAL</span><h2 id="scoreboard-dialog-title">Registre o scoreboard da partida</h2><p>Informe o placar e as estatísticas de cada participante. Ao concluir, a revisão é finalizada e as anotações ficam somente para consulta.</p></div><button type="button" data-proto-action="close-scoreboard-dialog" aria-label="Fechar">×</button></header>
+      <div class="scoreboard-dialog__final"><div class="scoreboard-dialog__team"><img src="${assets.azure}" alt=""><strong>AZURE BEARS</strong></div><div class="scoreboard-dialog__score"><input value="9" inputmode="numeric" aria-label="Rodadas vencidas pela AZURE BEARS" data-score-final><span>:</span><input value="13" inputmode="numeric" aria-label="Rodadas vencidas pelo adversário" data-score-final><small>${match.map.toLocaleUpperCase("pt-BR")} · PLACAR FINAL</small></div><div class="scoreboard-dialog__team"><img src="${opponentLogos[match.opponent] || assets.shieldLogo}" alt=""><strong>${match.opponent}</strong></div></div>
+      <div class="score-entry__table"><div class="score-entry__head"><span>PARTICIPANTE / AGENTE</span><span>K</span><span>D</span><span>A</span><span>FK</span><span>SALDO</span><span>SITUAÇÃO</span></div>${rows}</div>
+      <p class="scoreboard-dialog__hint" data-score-hint>Valores inteiros iguais ou maiores que zero. O saldo (K − D) é calculado automaticamente.</p>
+      <footer><button class="module-secondary" type="button" data-proto-action="close-scoreboard-dialog">CONTINUAR REVISANDO</button><button class="module-primary" type="button" data-proto-action="finalize-with-scoreboard">SALVAR E FINALIZAR</button></footer>
+    </form></dialog>`;
   }
 
   function scoreboardScreen() {
@@ -989,9 +1156,9 @@
     }).join("");
     const ours = correction ? match.ours : 9;
     const theirs = correction ? match.theirs : 13;
-    return moduleShell({ screen: "scoreboard", activeNav: correction ? "matches" : "reviews", eyebrow: `PARTIDA · RUSH ONE VS ${match.opponent}`, title: correction ? "CORRIGIR SCOREBOARD" : "REGISTRAR SCOREBOARD", description: "", actions: correction ? '<button class="module-secondary" type="button" data-route="partidas">VOLTAR À PARTIDA</button>' : '<button class="module-secondary" type="button" data-route="revisao">VOLTAR À REVISÃO</button>', content: `
+    return moduleShell({ screen: "scoreboard", activeNav: correction ? "matches" : "reviews", eyebrow: `PARTIDA · AZURE BEARS VS ${match.opponent}`, title: correction ? "CORRIGIR SCOREBOARD" : "REGISTRAR SCOREBOARD", description: "", actions: correction ? '<button class="module-secondary" type="button" data-route="partidas">VOLTAR À PARTIDA</button>' : '<button class="module-secondary" type="button" data-route="revisao">VOLTAR À REVISÃO</button>', content: `
       ${correction ? "" : `<section class="state-switcher" aria-label="Cenários de demonstração"><span>CENÁRIO VISUAL</span><button data-proto-action="score-state" data-state="incomplete" class="${!complete ? "is-active" : ""}">INCOMPLETO</button><button data-proto-action="score-state" data-state="complete" class="${complete && !corrected ? "is-active" : ""}">COMPLETO</button></section>`}
-      <section class="score-entry module-card"><header><div><span class="module-label">PLACAR FINAL · RODADAS · ${match.map.toLocaleUpperCase("pt-BR")}</span><strong class="score-entry__final">RUSH ONE <input value="${ours}" inputmode="numeric" aria-label="Rodadas vencidas pela RUSH ONE" data-score-final> — <input value="${theirs}" inputmode="numeric" aria-label="Rodadas vencidas pelo adversário" data-score-final> ${match.opponent}</strong></div><span class="status-badge status-badge--${complete && !invalid.length ? "success" : "pending"}">${correction ? "SESSÃO FINALIZADA" : complete && !invalid.length ? "COMPLETO" : "INCOMPLETO"}</span></header><div class="score-entry__table"><div class="score-entry__head"><span>PARTICIPANTE / AGENTE</span><span>K</span><span>D</span><span>A</span><span>FK</span><span>SALDO</span><span>SITUAÇÃO</span></div>${rows}</div><footer><p class="dialog-info">Para cada participante, informe o agente e as quantidades de abates (K), mortes (D), assistências (A) e primeiros abates (FK), como números inteiros iguais ou maiores que zero. O saldo (K − D) é calculado automaticamente.</p><button class="module-primary" type="button" data-proto-action="save-scoreboard" data-mode="${correction ? "correction" : "register"}">${correction ? "SALVAR CORREÇÃO" : "SALVAR SCOREBOARD"}</button></footer></section>
+      <section class="score-entry module-card"><header><div><span class="module-label">PLACAR FINAL · RODADAS · ${match.map.toLocaleUpperCase("pt-BR")}</span><strong class="score-entry__final">AZURE BEARS <input value="${ours}" inputmode="numeric" aria-label="Rodadas vencidas pela AZURE BEARS" data-score-final> — <input value="${theirs}" inputmode="numeric" aria-label="Rodadas vencidas pelo adversário" data-score-final> ${match.opponent}</strong></div><span class="status-badge status-badge--${complete && !invalid.length ? "success" : "pending"}">${correction ? "SESSÃO FINALIZADA" : complete && !invalid.length ? "COMPLETO" : "INCOMPLETO"}</span></header><div class="score-entry__table"><div class="score-entry__head"><span>PARTICIPANTE / AGENTE</span><span>K</span><span>D</span><span>A</span><span>FK</span><span>SALDO</span><span>SITUAÇÃO</span></div>${rows}</div><footer><p class="dialog-info">Para cada participante, informe o agente e as quantidades de abates (K), mortes (D), assistências (A) e primeiros abates (FK), como números inteiros iguais ou maiores que zero. O saldo (K − D) é calculado automaticamente.</p><button class="module-primary" type="button" data-proto-action="save-scoreboard" data-mode="${correction ? "correction" : "register"}">${correction ? "SALVAR CORREÇÃO" : "SALVAR SCOREBOARD"}</button></footer></section>
       ${corrected && correction ? '<section class="recalculation-banner"><strong>SCOREBOARD CORRIGIDO</strong><span>Os indicadores da equipe e dos jogadores passam a considerar os valores corrigidos. As sínteses já geradas são preservadas.</span></section>' : ""}` });
   }
 
@@ -1005,9 +1172,9 @@
     return moduleShell({ screen: "rastreabilidade", activeNav: "reviews", eyebrow: "DOCUMENTAÇÃO DO PROTÓTIPO", title: "MATRIZ DE RASTREABILIDADE", description: "Mapa visual dos requisitos funcionais e regras de negócio cobertos pelos fluxos de demonstração.", actions: '<button class="module-secondary" type="button" data-route="dashboard">VOLTAR AO PAINEL</button>', content: `<section class="traceability-grid">${groups.map((group, index) => `<article class="traceability-card"><span>0${index + 1}</span><h2>${group[0]}</h2><p><strong>${group[1]}</strong><small>${group[2]}</small></p><em>${group[3]}</em><i>COBERTURA VISUAL</i></article>`).join("")}</section><p class="module-notice"><strong>Escopo:</strong> cada item é representado por estado, aviso, checklist ou bloqueio visual. Não há validação sistêmica, persistência ou processamento real.</p>` });
   }
 
-  function recordingsScreen() {
-    const match = findMatch(prototypeState.recordingMatch) || prototypeState.matches[0];
+  function recordingsPanel(match) {
     const finalized = match.status === "finalized";
+    const locked = match.status !== "waiting";
     const players = match.participants.map((name) => rosterPlayers.find((player) => player.name === name)).filter(Boolean);
     const sent = players.filter((player) => match.recordings[player.name]).length;
     const errors = prototypeState.recordingErrors || {};
@@ -1016,47 +1183,49 @@
       const error = errors[player.name];
       const uploading = rec && rec.progress !== undefined;
       const status = error ? ["pending", "RECUSADO"] : uploading ? ["progress", `ENVIANDO ${rec.progress}%`] : rec ? ["success", "ENVIADA"] : ["pending", "PENDENTE"];
-      return `<article class="recording-card${rec && !error ? "" : " is-pending"}" data-recording-card data-player="${player.name}"><header><img src="${player.icon}" alt=""><span><strong>${player.name}</strong><small>${player.role} · participante da partida</small></span><span class="status-badge status-badge--${status[0]}">${status[1]}</span></header>
+      return `<article class="recording-card${rec && !error ? "" : " is-pending"}" data-recording-card data-player="${player.name}"><header>${playerAvatar(player.name)}<span><strong>${player.name}</strong><small>${player.role} · participante da partida</small></span><span class="status-badge status-badge--${status[0]}">${status[1]}</span></header>
         <div class="recording-card__file"><span aria-hidden="true">${rec && !error ? "▶" : "!"}</span><div><strong>${error ? error.file : rec ? rec.file : "Nenhuma gravação enviada"}</strong><small>${error ? error.message : uploading ? "Envio em andamento" : rec ? `${rec.size.toFixed(1).replace(".", ",")} GB · ${rec.duration} · MP4 (H.264)` : "MP4 (H.264) · até 2 GB"}</small>${uploading ? `<i class="recording-progress"><b style="width:${rec.progress}%"></b></i>` : ""}</div></div>
-        <footer><label class="module-secondary recording-upload${finalized || uploading ? " is-disabled" : ""}"><input type="file" accept="video/mp4" data-recording-pick data-player="${player.name}"${finalized || uploading ? " disabled" : ""}>${rec && !error ? "SUBSTITUIR ARQUIVO" : "SELECIONAR ARQUIVO"}</label><button type="button" data-remove-recording data-proto-action="open-remove-recording" data-player="${player.name}" ${!rec || finalized || uploading ? "disabled" : ""}>REMOVER</button></footer></article>`;
+        <footer>${rec && !error ? "" : `<label class="module-secondary recording-upload${locked || uploading ? " is-disabled" : ""}"><input type="file" accept="video/mp4" data-recording-pick data-player="${player.name}"${locked || uploading ? " disabled" : ""}>SELECIONAR ARQUIVO</label>`}<button type="button" data-remove-recording data-proto-action="open-remove-recording" data-player="${player.name}" ${!rec || locked || uploading ? "disabled" : ""}>REMOVER</button></footer></article>`;
     };
-    const next = sent >= 2 ? ["sincronizacao", "SINCRONIZAR POVs"] : ["revisao", "INICIAR REVISÃO"];
-    return moduleShell({
-      screen: "gravacoes",
-      activeNav: "matches",
-      eyebrow: `PARTIDA · RUSH ONE VS ${match.opponent}`,
-      title: "GRAVAÇÕES DA PARTIDA",
-      description: "",
-      actions: `<button class="module-secondary" type="button" data-proto-action="select-match" data-match="${match.id}" data-goto="partidas">VOLTAR À PARTIDA</button>${finalized ? "" : `<button class="module-primary" type="button" data-route="${next[0]}" ${sent ? "" : "disabled"}>${next[1]}</button>`}`,
-      content: `<section class="match-context"><div><img src="${assets.rushone}" alt=""><span><small>${matchDate(match.datetime, true)} · ${(match.event || match.type).toLocaleUpperCase("pt-BR")}</small><strong>RUSH ONE × ${match.opponent}</strong><em>${match.map.toLocaleUpperCase("pt-BR")} · ${players.length} PARTICIPANTE(S)</em></span></div><span class="status-badge status-badge--${sent === players.length ? "success" : "pending"}">${sent} DE ${players.length} GRAVAÇÕES ENVIADAS</span></section>
+    const next = sent >= 2 ? "preparando" : "revisao";
+    return `<div class="recordings-panel"><div class="recordings-panel__head"><div><span class="module-label">GRAVAÇÕES DOS PARTICIPANTES</span><strong>${sent} de ${players.length} enviadas</strong></div>${locked ? "" : `<button class="module-primary" type="button" data-route="${next}" ${sent ? "" : "disabled"}>INICIAR REVISÃO</button>`}</div>
+        <div class="recordings-panel__bar" aria-hidden="true"><i style="width:${players.length ? sent / players.length * 100 : 0}%"></i></div>
         <section class="recording-grid" aria-label="Gravações dos participantes">${players.map(card).join("")}</section>
-        ${finalized ? '<p class="dialog-info">A sessão de revisão desta partida está finalizada: as gravações estão disponíveis somente para consulta.</p>' : '<p class="dialog-info">Envie uma gravação principal por participante, em MP4 (H.264) de até 2 GB. Com duas ou mais gravações, a sincronização dos POVs é exigida antes da revisão.</p>'}
-        <dialog class="module-dialog confirm-dialog" data-recording-dialog><form method="dialog"><header><div><span class="module-label" data-recording-dialog-label></span><h2 data-recording-dialog-title></h2></div><button type="button" data-proto-action="close-recording-dialog" aria-label="Fechar">×</button></header><div class="dialog-fields" data-recording-dialog-body></div><footer><button class="module-secondary" type="button" data-proto-action="close-recording-dialog">CANCELAR</button><button class="module-danger" type="button" data-proto-action="confirm-recording-dialog" data-recording-dialog-ok></button></footer></form></dialog>`
-    });
+        ${finalized ? '<p class="dialog-info">A sessão de revisão desta partida está finalizada: as gravações estão disponíveis somente para consulta.</p>' : locked ? '<p class="dialog-info">A sessão de revisão desta partida já foi criada: os participantes e as gravações não podem mais ser alterados. As gravações ficam disponíveis para a sincronização e a revisão.</p>' : '<p class="dialog-info">Envie uma gravação principal por participante, em MP4 (H.264) de até 2 GB. Para trocar um arquivo, remova a gravação e envie outra. Ao iniciar a revisão, a plataforma sincroniza os POVs automaticamente, cria a sessão e bloqueia os participantes e as gravações.</p>'}
+        <dialog class="module-dialog confirm-dialog" data-recording-dialog><form method="dialog"><header><div><span class="module-label" data-recording-dialog-label></span><h2 data-recording-dialog-title></h2></div><button type="button" data-proto-action="close-recording-dialog" aria-label="Fechar">×</button></header><div class="dialog-fields" data-recording-dialog-body></div><footer><button class="module-secondary" type="button" data-proto-action="close-recording-dialog">CANCELAR</button><button class="module-danger" type="button" data-proto-action="confirm-recording-dialog" data-recording-dialog-ok></button></footer></form></dialog></div>`;
+  }
+
+  function recordingsScreen() {
+    const match = findMatch(prototypeState.recordingMatch) || prototypeState.matches[0];
+    prototypeState.selectedMatch = match.id;
+    prototypeState.matchTab = "recordings";
+    prototypeState.keepMatch = true;
+    window.setTimeout(() => navigate("partidas"), 0);
+    return "";
   }
 
   // RF009 · sincronização dos POVs em linha do tempo (estilo editor de vídeo)
-  const SYNC_TRUTH = { Psyder: 0, caKo: 12.4, iSay: -8.0, Jhons: 31.6 };          // deslocamentos reais (demonstração)
-  const SYNC_MARK = { Psyder: 42.0, caKo: 29.6, iSay: 50.0, Jhons: 10.4 };        // início do round 1 em cada vídeo (s)
-  const SYNC_DUR = { Psyder: 2538, caKo: 2332, iSay: 2410, Jhons: 2290 };
-  const SYNC_POV = { Psyder: 0, caKo: 1, Jhons: 2, iSay: 3 };
+  const SYNC_TRUTH = { André: 0, kick: 12.4, pim: -8.0, greinzera: 31.6 };          // deslocamentos reais (demonstração)
+  const SYNC_MARK = { André: 42.0, kick: 29.6, pim: 50.0, greinzera: 10.4 };        // início do round 1 em cada vídeo (s)
+  const SYNC_DUR = { André: 2538, kick: 2332, pim: 2410, greinzera: 2290 };
+  const SYNC_POV = { André: 0, kick: 1, greinzera: 2, pim: 3 };
   function syncScenario(kind) {
-    const names = ["Psyder", "caKo", "iSay", "Jhons"];
-    const base = { reference: "Psyder", names, playhead: 75, window: 180, selected: "caKo", edited: false };
+    const names = ["André", "kick", "pim", "greinzera"];
+    const base = { reference: "André", names, playhead: 75, window: 180, selected: "kick", edited: false };
     if (kind === "pendente") return { ...base, status: "pending", offsets: Object.fromEntries(names.map((n) => [n, 0])), detected: {} };
-    if (kind === "falha") return { ...base, status: "failed", offsets: { Psyder: 0, caKo: 12.4, iSay: -8.0, Jhons: 0 }, detected: { Psyder: true, caKo: true, iSay: true } };
-    return { ...base, status: "validated", offsets: { ...SYNC_TRUTH }, detected: { Psyder: true, caKo: true, iSay: true, Jhons: true } };
+    if (kind === "falha") return { ...base, status: "failed", offsets: { André: 0, kick: 12.4, pim: -8.0, greinzera: 0 }, detected: { André: true, kick: true, pim: true } };
+    return { ...base, status: "validated", offsets: { ...SYNC_TRUTH }, detected: { André: true, kick: true, pim: true, greinzera: true } };
   }
   prototypeState.sync = syncScenario("validada");
   // RF011 · anotações da sessão (instante em segundos na referência temporal)
-  const REVIEW_PARTICIPANTS = ["caKo", "Psyder", "iSay", "Jhons", "Ethan"];
+  const REVIEW_PARTICIPANTS = ["kick", "André", "pim", "greinzera", "taek"];
   prototypeState.notes = [
     { id: 1, target: "EQUIPE", time: 198, body: "Manter dupla em crossfire e guardar a Viper Pit para o segundo contato." },
-    { id: 2, target: "Psyder", time: 451, body: "Evitar compra fragmentada. Priorizar entrada da Jett com flash coordenada." },
-    { id: 3, target: "caKo", time: 762, body: "Rotação tardia após o contato. Revisar o utilitário do Sova no retake." }
+    { id: 2, target: "André", time: 451, body: "Evitar compra fragmentada. Priorizar entrada da Jett com flash coordenada." },
+    { id: 3, target: "kick", time: 762, body: "Rotação tardia após o contato. Revisar o utilitário do Sova no retake." }
   ];
   const mmss = (v) => `${String(Math.floor(v / 60)).padStart(2, "0")}:${String(Math.round(v) % 60).padStart(2, "0")}`;
-  const noteTargetLabel = (t) => t === "EQUIPE" ? "EQUIPE · RUSH ONE" : `JOGADOR · ${t}`;
+  const noteTargetLabel = (t) => t === "EQUIPE" ? "EQUIPE · AZURE BEARS" : `JOGADOR · ${t}`;
   function noteItems(readonly) {
     const notes = [...prototypeState.notes].sort((a, b) => a.time - b.time);
     if (!notes.length) return '<p class="review-notes__empty">Nenhuma anotação registrada.</p>';
@@ -1099,7 +1268,7 @@
       const left = pct(off);
       const width = pct(SYNC_DUR[name]);
       return `<div class="sync-track${sync.selected === name ? " is-selected" : ""}" data-sync-track="${name}">
-        <div class="sync-track__label"><img src="${player.icon}" alt=""><span><strong>${name}</strong><small>${isRef ? "REFERÊNCIA" : `${fmtSec(off, true)}`}</small></span></div>
+        <div class="sync-track__label">${playerAvatar(name)}<span><strong>${name}</strong><small>${isRef ? "REFERÊNCIA" : `${fmtSec(off, true)}`}</small></span></div>
         <div class="sync-track__lane" data-sync-lane>
           <div class="sync-clip${isRef ? " is-reference" : ""}" style="left:${left}%;width:${width}%" data-sync-clip="${name}" ${isRef ? "" : 'tabindex="0" role="slider" aria-label="Deslocamento de ' + name + '"'}>
             <span class="sync-clip__name">${name.toUpperCase()} · ${isRef ? "FIXA" : "ARRASTE PARA AJUSTAR"}</span>
@@ -1111,11 +1280,11 @@
     return moduleShell({
       screen: "sincronizacao",
       activeNav: "reviews",
-      eyebrow: "PARTIDA · RUSH ONE VS AZURE BEARS · ASCENT",
+      eyebrow: "PARTIDA · AZURE BEARS VS WOLF GAMING · ASCENT",
       title: "SINCRONIZAÇÃO DE POVs",
       description: "",
       actions: `<button class="module-secondary" type="button" data-route="gravacoes">VOLTAR ÀS GRAVAÇÕES</button>${sync.status === "validated" ? '<button class="module-primary" type="button" data-route="revisao">IR PARA A REVISÃO</button>' : `<button class="module-primary" type="button" data-proto-action="sync-validate" ${canValidate ? "" : "disabled"}>VALIDAR SINCRONIZAÇÃO</button>`}`,
-      content: `<section class="sync-overview"><div><span class="module-label">GRAVAÇÃO DE REFERÊNCIA</span><label><select data-sync-reference aria-label="Gravação de referência">${sync.names.map((n) => `<option${n === sync.reference ? " selected" : ""}>${n}</option>`).join("")}</select></label><small class="sync-reference-hint">A referência fica fixa na posição zero; as demais são posicionadas em relação a ela.</small></div><div><span class="module-label">SITUAÇÃO DA SINCRONIZAÇÃO</span><strong><span class="status-badge status-badge--${badgeKind}" data-sync-badge>${badgeText}</span></strong><small>${sync.status === "failed" ? "O OCR não identificou o marco de uma ou mais gravações. Ajuste-as manualmente na linha do tempo." : sync.status === "validated" ? "Correspondência conferida e validada pelo treinador." : sync.status === "proposed" ? "Confira a pré-visualização e valide, ou ajuste as gravações arrastando-as." : "Detecte automaticamente ou posicione as gravações manualmente."}</small></div><button class="module-secondary" type="button" data-proto-action="sync-auto" ${sync.status === "processing" ? "disabled" : ""}>DETECTAR AUTOMATICAMENTE</button></section>
+      content: `<section class="sync-overview"><div><span class="module-label">GRAVAÇÃO DE REFERÊNCIA</span><label><select data-sync-reference aria-label="Gravação de referência"${sync.status === "validated" && prototypeState.notes.length ? " disabled" : ""}>${sync.names.map((n) => `<option${n === sync.reference ? " selected" : ""}>${n}</option>`).join("")}</select></label><small class="sync-reference-hint">${sync.status === "validated" && prototypeState.notes.length ? "A referência não pode ser trocada porque a sessão já possui anotações." : "A referência fica fixa na posição zero. Trocá-la reinicia a sincronização."}</small></div><div><span class="module-label">SITUAÇÃO DA SINCRONIZAÇÃO</span><strong><span class="status-badge status-badge--${badgeKind}" data-sync-badge>${badgeText}</span></strong><small>${sync.status === "failed" ? "O OCR não identificou o marco de uma ou mais gravações. Ajuste-as manualmente na linha do tempo." : sync.status === "validated" ? "Correspondência conferida e validada pelo treinador." : sync.status === "proposed" ? "Confira a pré-visualização e valide, ou ajuste as gravações arrastando-as." : "Detecte automaticamente ou posicione as gravações manualmente."}</small></div><button class="module-secondary" type="button" data-proto-action="sync-auto" ${sync.status === "processing" ? "disabled" : ""}>DETECTAR AUTOMATICAMENTE</button></section>
         <section class="module-card sync-editor" aria-label="Linha do tempo de sincronização">
           <header class="sync-editor__head"><div><span class="module-label">LINHA DO TEMPO DA REFERÊNCIA</span><small>Arraste cada gravação até que o marco do round 1 (linha verde) fique alinhado. Ajuste fino: teclas ← → (0,1 s) ou Shift + ← → (1 s).</small></div>
             <div class="sync-zoom" aria-label="Zoom da linha do tempo">${[[60, "1 MIN"], [180, "3 MIN"], [600, "10 MIN"]].map(([w, l]) => `<button type="button" data-proto-action="sync-zoom" data-window="${w}" class="${w === win ? "is-active" : ""}">${l}</button>`).join("")}</div></header>
@@ -1129,7 +1298,7 @@
   }
 
   const reviewPovSlotsFor = () => [
-    ...["Psyder", "caKo", "Jhons", "iSay"].map((name) => {
+    ...["André", "kick", "greinzera", "pim"].map((name) => {
       const player = rosterPlayers.find((p) => p.name === name);
       const offset = prototypeState.sync.offsets[name] - prototypeState.sync.offsets[prototypeState.sync.reference];
       return { ...player, povImage: assets.povs[SYNC_POV[name]], povStart: Math.max(0, Math.round(offset)) };
@@ -1155,7 +1324,7 @@
         ${thumbnailIndexes.map((index) => {
           const player = reviewPovSlots[index];
           if (!player?.povImage) return `<button class="pov-thumbnail is-empty" type="button" disabled aria-label="POV ${index + 1} indisponível">
-            <span class="pov-thumbnail__empty" aria-hidden="true">?</span><span><strong>ETHAN · SEM GRAVAÇÃO</strong><small>PARTICIPANTE SEM POV ENVIADO</small></span>
+            <span class="pov-thumbnail__empty" aria-hidden="true">?</span><span><strong>TAEK · SEM GRAVAÇÃO</strong><small>PARTICIPANTE SEM POV ENVIADO</small></span>
           </button>`;
           return `<button class="pov-thumbnail" type="button" data-select-pov="${index}" data-pov-start="${player.povStart || 0}" aria-label="Exibir POV de ${player.name} no frame principal">
             <img src="${player.povImage}" alt=""><span class="pov-thumbnail__shade" aria-hidden="true"></span><span class="pov-no-content" aria-hidden="true"><strong>SEM CONTEÚDO NESTE INSTANTE</strong><small>A gravação começa em ${formatInitialPovTime(player.povStart || 0)}</small></span>
@@ -1179,19 +1348,13 @@
     const finalized = getHashParams().has("finalizada") || prototypeState.reviewReady;
     const sync = prototypeState.sync;
     const single = getHashParams().has("unico");
-    const locked = !single && sync.status !== "validated";
-    const audioName = "PSYDER";
-    return moduleShell({
+    const locked = false;
+    const audioName = "ANDRÉ";
+    return focusShell({
       screen: "revisao",
       activeNav: "reviews",
-      eyebrow: finalized ? "SESSÃO FINALIZADA · HAVEN" : "SESSÃO EM ANDAMENTO · HAVEN",
-      title: "REVISÃO MULTI-POV",
-      description: "Compare as perspectivas sincronizadas, registre observações e complete o scoreboard da partida.",
-      actions: finalized
-        ? '<button class="module-secondary" type="button" data-route="partidas">VOLTAR À PARTIDA</button><button class="module-primary" type="button" data-open-synthesis data-route="sintese">GERAR SÍNTESE</button>'
-        : '<button class="module-secondary" type="button" data-route="sincronizacao">AJUSTAR SINCRONIA</button><button class="module-primary" type="button" data-finalize-review>FINALIZAR REVISÃO</button><button class="module-primary is-hidden" type="button" data-open-synthesis data-route="sintese">GERAR SÍNTESE</button>',
-      sidePanel: matchPlayersPanel(),
-      content: `<div class="review-workspace"><section class="pov-stage${locked ? " is-locked" : ""}"><div class="pov-viewer" data-pov-viewer aria-label="Visualizador de cinco posições Multi-POV">${locked ? `<div class="pov-locked"><span class="status-badge status-badge--pending">SINCRONIZAÇÃO ${sync.status === "proposed" ? "NÃO VALIDADA" : "PENDENTE"}</span><h2>Reprodução sincronizada indisponível</h2><p>Com duas ou mais gravações, a correspondência temporal precisa ser conferida e validada antes da reprodução e do registro de anotações.</p><button class="module-primary" type="button" data-route="sincronizacao">SINCRONIZAR POVs</button></div>` : reviewPovViewer()}</div>
+      content: `<header class="review-topbar"><button class="review-topbar__back" type="button" data-proto-action="select-match" data-match="m2" data-goto="partidas" aria-label="Voltar à partida">←</button><div class="review-topbar__match"><img src="${assets.azure}" alt=""><div><span class="module-label">${finalized ? "REVISÃO FINALIZADA" : "REVISÃO EM ANDAMENTO"}</span><strong>AZURE BEARS <em>×</em> WOLF GAMING</strong><small>ASCENT · 21 MAR 2026 · ${single ? "1 POV" : "4 POVs SINCRONIZADOS"}</small></div><img src="${assets.wolf}" alt=""></div><div class="review-topbar__actions">${finalized ? '<button class="module-primary" type="button" data-open-synthesis data-route="sintese">GERAR SÍNTESE</button>' : '<button class="module-primary" type="button" data-finalize-review>FINALIZAR REVISÃO</button><button class="module-primary is-hidden" type="button" data-open-synthesis data-route="sintese">GERAR SÍNTESE</button>'}</div></header>
+      <div class="review-workspace"><section class="pov-stage${locked ? " is-locked" : ""}"><div class="pov-viewer" data-pov-viewer aria-label="Visualizador de cinco posições Multi-POV">${locked ? `<div class="pov-locked"><span class="status-badge status-badge--pending">SINCRONIZAÇÃO ${sync.status === "proposed" ? "NÃO VALIDADA" : "PENDENTE"}</span><h2>Reprodução sincronizada indisponível</h2><p>Com duas ou mais gravações, a correspondência temporal precisa ser conferida e validada antes da reprodução e do registro de anotações.</p><button class="module-primary" type="button" data-route="sincronizacao">SINCRONIZAR POVs</button></div>` : reviewPovViewer()}</div>
         <div class="review-player" data-review-player style="--timeline-progress:30.02%">
           <div class="review-timeline">
             <div class="review-timeline__track">
@@ -1203,23 +1366,20 @@
           <div class="playback-bar">
             <div class="playback-transport" aria-label="Controles de reprodução">
               <button class="playback-control is-primary" type="button" data-playback aria-label="Reproduzir" title="Reproduzir ou pausar"><span aria-hidden="true">▶</span></button>
-              <button class="playback-control" type="button" data-review-step="-5" aria-label="Voltar 5 segundos" title="Voltar 5 segundos"><span aria-hidden="true">|◀</span></button>
-              <button class="playback-control" type="button" data-review-step="5" aria-label="Avançar 5 segundos" title="Avançar 5 segundos"><span aria-hidden="true">▶|</span></button>
-              <button class="playback-control" type="button" data-review-restart aria-label="Reiniciar reprodução" title="Reiniciar"><span aria-hidden="true">↻</span></button>
+              <button class="playback-control" type="button" data-review-step="-10" aria-label="Voltar 10 segundos" title="Voltar 10 segundos"><span aria-hidden="true">↺</span><small>10s</small></button>
+
             </div>
             <div class="playback-time" aria-label="Tempo da reprodução"><strong data-current-time>12:42</strong><span>/</span><span data-total-time>42:18</span></div>
-            <div class="playback-round"><span>REFERÊNCIA</span><strong>${single ? "PSYDER" : sync.reference.toUpperCase()}</strong></div>
             <div class="playback-speeds" aria-label="Velocidade da reprodução">
-              <button type="button" data-playback-speed="0.5">0.5x</button><button class="is-active" type="button" data-playback-speed="1" aria-pressed="true">1x</button><button type="button" data-playback-speed="2">2x</button><button type="button" data-playback-speed="4">4x</button>
+              <button class="is-active" type="button" data-playback-speed="1" aria-pressed="true">1x</button><button type="button" data-playback-speed="2">2x</button><button type="button" data-playback-speed="4">4x</button>
             </div>
-            <button class="playback-audio" type="button" data-audio-toggle aria-pressed="true" title="Áudio do POV principal">🔊 ÁUDIO: <span data-audio-name>${audioName}</span></button>
           </div>
         </div></section>
-          <aside class="review-notes${finalized ? " is-readonly" : ""}"><header><div><span class="module-label">ANOTAÇÕES DA SESSÃO</span><strong data-note-count>${prototypeState.notes.length} ${prototypeState.notes.length === 1 ? "REGISTRO" : "REGISTROS"}</strong></div><span class="status-badge status-badge--progress" data-review-current-time>12:42</span></header>${finalized ? '<p class="review-notes__locked" data-notes-locked>Sessão finalizada: as anotações estão disponíveis somente para consulta.</p>' : locked ? '<p class="review-notes__locked">Registro de anotações indisponível até a validação da sincronização.</p>' : ""}<form data-note-form novalidate${finalized || locked ? " hidden" : ""}><label><span>VINCULAR A</span><select name="target"><option value="EQUIPE">EQUIPE · RUSH ONE</option>${REVIEW_PARTICIPANTS.map((name) => `<option value="${name}">JOGADOR · ${name}</option>`).join("")}</select></label><label><span>OBSERVAÇÃO <small data-note-counter>0/500</small></span><textarea name="body" required maxlength="500" placeholder="Registre o ponto observado neste instante..."></textarea></label><button class="module-primary" type="submit">ADICIONAR EM <span data-note-time-label>12:42</span></button></form><div class="review-note-list" data-review-note-list>${noteItems(finalized || locked)}</div></aside></div>
-        <dialog class="module-dialog" data-note-dialog><form method="dialog" data-note-edit-form novalidate><header><div><span class="module-label">ANOTAÇÃO · INSTANTE <span data-note-edit-time></span></span><h2>EDITAR ANOTAÇÃO</h2></div><button type="button" data-proto-action="note-dialog-close" aria-label="Fechar">×</button></header><div class="dialog-fields"><label><span>VINCULAR A</span><select name="target"><option value="EQUIPE">EQUIPE · RUSH ONE</option>${REVIEW_PARTICIPANTS.map((name) => `<option value="${name}">JOGADOR · ${name}</option>`).join("")}</select></label><label><span>OBSERVAÇÃO</span><textarea name="body" required maxlength="500"></textarea></label><p class="dialog-info">O instante da anotação na linha do tempo é mantido.</p></div><footer><button class="module-secondary" type="button" data-proto-action="note-dialog-close">CANCELAR</button><button class="module-primary" type="button" data-proto-action="note-save">SALVAR ANOTAÇÃO</button></footer></form></dialog>
+          <aside class="review-notes${finalized ? " is-readonly" : ""}"><header><div><span class="module-label">ANOTAÇÕES DA SESSÃO</span><strong data-note-count>${prototypeState.notes.length} ${prototypeState.notes.length === 1 ? "REGISTRO" : "REGISTROS"}</strong></div><span class="status-badge status-badge--progress" data-review-current-time>12:42</span></header>${finalized ? '<p class="review-notes__locked" data-notes-locked>Sessão finalizada: as anotações estão disponíveis somente para consulta.</p>' : locked ? '<p class="review-notes__locked">Registro de anotações indisponível até a validação da sincronização.</p>' : ""}<form data-note-form novalidate${finalized || locked ? " hidden" : ""}><label><span>VINCULAR A</span><select name="target"><option value="EQUIPE">EQUIPE · AZURE BEARS</option>${REVIEW_PARTICIPANTS.map((name) => `<option value="${name}">JOGADOR · ${name}</option>`).join("")}</select></label><label><span>OBSERVAÇÃO <small data-note-counter>0/500</small></span><textarea name="body" required maxlength="500" placeholder="Registre o ponto observado neste instante..."></textarea></label><button class="module-primary" type="submit">ADICIONAR EM <span data-note-time-label>12:42</span></button></form><div class="review-note-list" data-review-note-list>${noteItems(finalized || locked)}</div></aside></div>
+        <dialog class="module-dialog" data-note-dialog><form method="dialog" data-note-edit-form novalidate><header><div><span class="module-label">ANOTAÇÃO · INSTANTE <span data-note-edit-time></span></span><h2>EDITAR ANOTAÇÃO</h2></div><button type="button" data-proto-action="note-dialog-close" aria-label="Fechar">×</button></header><div class="dialog-fields"><label><span>VINCULAR A</span><select name="target"><option value="EQUIPE">EQUIPE · AZURE BEARS</option>${REVIEW_PARTICIPANTS.map((name) => `<option value="${name}">JOGADOR · ${name}</option>`).join("")}</select></label><label><span>OBSERVAÇÃO</span><textarea name="body" required maxlength="500"></textarea></label><p class="dialog-info">O instante da anotação na linha do tempo é mantido.</p></div><footer><button class="module-secondary" type="button" data-proto-action="note-dialog-close">CANCELAR</button><button class="module-primary" type="button" data-proto-action="note-save">SALVAR ANOTAÇÃO</button></footer></form></dialog>
         <dialog class="module-dialog confirm-dialog" data-note-delete-dialog><form method="dialog"><header><div><span class="module-label">EXCLUSÃO DE ANOTAÇÃO</span><h2>Excluir a anotação de <span data-note-delete-time></span>?</h2></div><button type="button" data-proto-action="note-delete-close" aria-label="Fechar">×</button></header><div class="dialog-fields"><p data-note-delete-body></p><p class="dialog-info">A exclusão é definitiva.</p></div><footer><button class="module-secondary" type="button" data-proto-action="note-delete-close">CANCELAR</button><button class="module-danger" type="button" data-proto-action="note-delete-confirm">EXCLUIR ANOTAÇÃO</button></footer></form></dialog>
-        <section class="review-completion"><div><span class="module-label">SITUAÇÃO DA SESSÃO</span><strong data-review-state>${finalized ? "SESSÃO FINALIZADA" : "SESSÃO EM ANDAMENTO"} · 4 POVs</strong></div><div class="review-checks"><span class="${locked ? "" : "is-done"}">${single ? "GRAVAÇÃO ÚNICA" : locked ? "SINCRONIA PENDENTE" : "SINCRONIA VALIDADA"}</span><span class="${finalized || prototypeState.scoreboardState !== "incomplete" ? "is-done" : ""}">SCOREBOARD ${finalized || prototypeState.scoreboardState !== "incomplete" ? "5/5" : "4/5"}</span><span data-final-check class="${finalized ? "is-done" : ""}">${finalized ? "REVISÃO FINALIZADA" : "REVISÃO PENDENTE"}</span></div></section>
-        <dialog class="module-dialog completion-dialog" data-finalize-dialog><form method="dialog"><header><div><span class="module-label">VALIDAÇÃO DE CONCLUSÃO</span><h2>Finalizar revisão?</h2></div><button type="button" data-proto-action="close-finalize" aria-label="Fechar">×</button></header><div class="dialog-fields"><div class="completion-checklist"><span class="is-done">✓ Sincronização validada</span><span class="${prototypeState.scoreboardState === "incomplete" ? "is-pending" : "is-done"}">${prototypeState.scoreboardState === "incomplete" ? "! Scoreboard incompleto: Ethan sem estatísticas" : "✓ Placar final e estatísticas de todos os participantes"}</span><span class="is-done">✓ Anotações preservadas na linha do tempo</span></div><p class="dialog-info">Após a finalização, as anotações ficam disponíveis somente para consulta e a síntese pode ser gerada.</p></div><footer><button class="module-secondary" type="button" data-proto-action="close-finalize">CANCELAR</button><button class="module-secondary" type="button" data-route="scoreboard">REGISTRAR SCOREBOARD</button><button class="module-primary" type="button" data-proto-action="confirm-finalize" ${prototypeState.scoreboardState === "incomplete" ? "disabled" : ""}>FINALIZAR REVISÃO</button></footer></form></dialog>`
+
+        ${finalized ? "" : scoreboardDialog()}`
     });
   }
 
@@ -1236,33 +1396,33 @@
     const params = getHashParams();
     const notFinalized = params.has("andamento");
     const versions = prototypeState.synthesisList || [];
-    const viewing = versions.find((v) => v.n === prototypeState.synthesisView) || versions[versions.length - 1];
+    const viewing = versions[versions.length - 1];
     const generating = prototypeState.synthesisGenerating;
     const failed = prototypeState.synthesisFailed;
-    const text = viewing ? SYNTH_TEXT[((viewing.n - 1) % 2) + 1] : null;
-    const isCurrent = viewing && viewing.n === versions.length;
+    const text = viewing ? SYNTH_TEXT[((prototypeState.synthesisGen || 1) - 1) % 2 + 1] : null;
+    const isCurrent = true;
     const body = notFinalized
       ? `<div class="synthesis-placeholder"><span>Σ</span><strong>SÍNTESE INDISPONÍVEL</strong><p>A síntese pode ser gerada somente após a finalização da sessão de revisão.</p></div>`
       : generating ? `<div class="synthesis-placeholder is-loading"><span>Σ</span><strong>GERANDO SÍNTESE…</strong><p>Anotações e scoreboard enviados ao modelo de linguagem com os nomes dos jogadores substituídos por pseudônimos.</p><i class="recording-progress"><b style="width:60%"></b></i></div>`
-      : failed ? `<div class="synthesis-placeholder is-error"><span>!</span><strong>NÃO FOI POSSÍVEL GERAR A SÍNTESE</strong><p>O serviço do modelo de linguagem não respondeu. Nenhuma versão foi criada; tente novamente.</p></div>`
+      : failed ? `<div class="synthesis-placeholder is-error"><span>!</span><strong>NÃO FOI POSSÍVEL GERAR A SÍNTESE</strong><p>O serviço do modelo de linguagem não respondeu. A síntese atual, se houver, foi mantida; tente novamente.</p></div>`
       : !viewing ? `<div class="synthesis-placeholder"><span>Σ</span><strong>NENHUMA SÍNTESE GERADA</strong><p>A síntese é gerada a partir das anotações e do scoreboard. Os nomes dos jogadores são enviados ao modelo de linguagem como pseudônimos.</p></div>`
       : `<div class="synthesis-copy"><p class="synthesis-basis">Gerada em ${viewing.at} · ${viewing.notes} anotações · placar ${viewing.score}</p><h3>VISÃO GERAL</h3><p>${text.overview}</p><h3>PONTOS DE ATENÇÃO</h3><ul>${text.points.map((x) => `<li>${x}</li>`).join("")}</ul><h3>PRÓXIMA SESSÃO</h3><p>${text.next}</p></div>`;
-    const status = notFinalized ? ["muted", "INDISPONÍVEL"] : generating ? ["progress", "GERANDO"] : failed ? ["pending", "FALHA"] : viewing ? [isCurrent ? "success" : "muted", `VERSÃO ${viewing.n} · ${isCurrent ? "ATUAL" : "PRESERVADA"}`] : ["muted", "NÃO GERADA"];
+    const status = notFinalized ? ["muted", "INDISPONÍVEL"] : generating ? ["progress", "GERANDO"] : failed ? ["pending", "FALHA"] : viewing ? ["success", "GERADA"] : ["muted", "NÃO GERADA"];
     return moduleShell({
       screen: "sintese",
       activeNav: "reviews",
-      eyebrow: notFinalized ? "SESSÃO EM ANDAMENTO · RUSH ONE VS AZURE BEARS" : "REVISÃO FINALIZADA · RUSH ONE VS GREEN OWLS",
+      eyebrow: notFinalized ? "SESSÃO EM ANDAMENTO · AZURE BEARS VS WOLF GAMING" : "REVISÃO FINALIZADA · AZURE BEARS VS GREEN OWLS",
       title: "SÍNTESE DA REVISÃO",
       description: "",
-      actions: `<button class="module-secondary" type="button" data-route="revisao${notFinalized ? "" : "?finalizada=1"}">VOLTAR À REVISÃO</button><button class="module-primary" type="button" data-proto-action="generate-synthesis" ${notFinalized || generating ? "disabled" : ""}>${versions.length ? "GERAR NOVA VERSÃO" : "GERAR SÍNTESE"}</button>`,
-      content: `<section class="synthesis-summary"><article><span>PARTIDA</span><strong>${notFinalized ? "RUSH ONE × AZURE BEARS" : `RUSH ONE ${prototypeState.scoreboardState === "corrected" ? "13 — 9" : "13 — 8"} GREEN OWLS`}</strong><small>${notFinalized ? "ASCENT · 21 MAR 2026" : "HAVEN · 28 MAR 2026"}</small></article><article><span>BASE DA SÍNTESE</span><strong>3 ANOTAÇÕES</strong><small>e scoreboard de 5 participantes</small></article><article><span>SESSÃO</span><strong>${notFinalized ? "EM ANDAMENTO" : "FINALIZADA"}</strong><small>${notFinalized ? "Scoreboard pendente" : "Scoreboard completo"}</small></article></section>
-        <div class="synthesis-layout"><section class="module-card synthesis-result"><header><div><span class="module-label">${viewing && !isCurrent ? "VERSÃO ANTERIOR" : "VERSÃO ATUAL"}</span><h2>SÍNTESE TÁTICA</h2></div><span class="status-badge status-badge--${status[0]}">${status[1]}</span></header>${body}</section><aside class="module-card synthesis-history"><header><span class="module-label">HISTÓRICO DE VERSÕES</span><small>Versões anteriores são preservadas</small></header><div data-synthesis-history>${versions.length ? [...versions].reverse().map((v) => `<button type="button" class="history-version${viewing && v.n === viewing.n ? " is-selected" : ""}" data-proto-action="view-synthesis" data-version="${v.n}"><span>V${v.n}</span><div><strong>SÍNTESE TÁTICA</strong><small>${v.at} · ${v.notes} anotações · placar ${v.score}</small></div><span class="status-badge status-badge--${v.n === versions.length ? "success" : "muted"}">${v.n === versions.length ? "ATUAL" : "PRESERVADA"}</span></button>`).join("") : '<p class="empty-history">A primeira versão aparecerá após a geração.</p>'}</div></aside></div>`
+      actions: `<button class="module-secondary" type="button" data-route="revisao${notFinalized ? "" : "?finalizada=1"}">VOLTAR À REVISÃO</button><button class="module-primary" type="button" data-proto-action="generate-synthesis" ${notFinalized || generating ? "disabled" : ""}>${versions.length ? "GERAR NOVAMENTE" : "GERAR SÍNTESE"}</button>`,
+      content: `<section class="synthesis-summary"><article><span>PARTIDA</span><strong>${notFinalized ? "AZURE BEARS × WOLF GAMING" : `AZURE BEARS ${prototypeState.scoreboardState === "corrected" ? "13 — 9" : "13 — 8"} GREEN OWLS`}</strong><small>${notFinalized ? "ASCENT · 21 MAR 2026" : "HAVEN · 28 MAR 2026"}</small></article><article><span>BASE DA SÍNTESE</span><strong>3 ANOTAÇÕES</strong><small>e scoreboard de 5 participantes</small></article><article><span>SESSÃO</span><strong>${notFinalized ? "EM ANDAMENTO" : "FINALIZADA"}</strong><small>${notFinalized ? "Scoreboard pendente" : "Scoreboard completo"}</small></article></section>
+        <div class="synthesis-layout"><section class="module-card synthesis-result"><header><div><span class="module-label">SÍNTESE DA SESSÃO</span><h2>SÍNTESE TÁTICA</h2></div><span class="status-badge status-badge--${status[0]}">${status[1]}</span></header>${body}</section><aside class="module-card synthesis-history"><header><span class="module-label">SOBRE A SÍNTESE</span><small>Uma síntese por sessão</small></header><ul class="synthesis-rules"><li>Gerada a partir das anotações e do scoreboard da sessão finalizada.</li><li>Os nomes dos jogadores são enviados ao modelo de linguagem como pseudônimos.</li><li>O texto gerado não é editável.</li><li>Gerar novamente substitui a síntese atual.</li></ul></aside></div>`
     });
   }
 
   const actionIcons = [
     ["[data-route='dashboard']", "house"], ["[data-route='partidas']", "calendar-days"], ["[data-route='jogadores']", "users-round"],
-    ["[data-route='revisoes']", "history"], ["[data-route='gravacoes']", "video"], ["[data-route='sincronizacao']", "waypoints"],
+    ["[data-route='revisoes']", "history"], ["[data-route='gravacoes']", "video"], ["[data-route='sincronizacao']", "waypoints"], ["[data-route='preparando']", "play"],
     ["[data-route='revisao']", "play"], ["[data-route='sintese']", "sparkles"], ["[data-route='nova-partida']", "plus"],
     ["[data-route='scoreboard']", "chart-no-axes-combined"], ["[data-route^='scoreboard?correcao']", "chart-no-axes-combined"], ["[data-route^='nova-partida?editar']", "square-pen"], ["[data-proto-action='open-recordings']", "video"], ["[data-route='rastreabilidade']", "list-checks"], ["[data-route='perfil-equipe']", "settings-2"],
     ["[data-open-team-dialog]", "plus"], ["[data-open-user-dialog], [data-proto-action='open-player-dialog']", "user-plus"],
@@ -1630,6 +1790,7 @@
       teamForm.elements.state.value = team.state;
       teamForm.elements.coach.innerHTML = coachOptions(team.coach);
       teamForm.elements.coach.value = team.coach;
+      syncStatePickers(teamForm);
       document.querySelector("[data-team-dialog-title]").textContent = "EDITAR EQUIPE";
       teamDialog.showModal();
     };
@@ -1679,6 +1840,7 @@
       teamForm.reset();
       delete teamForm.dataset.teamIndex;
       teamForm.elements.coach.innerHTML = coachOptions();
+      syncStatePickers(teamForm);
       document.querySelector("[data-team-dialog-title]").textContent = "NOVA EQUIPE";
       teamDialog.showModal();
     }));
@@ -1714,6 +1876,7 @@
     };
     if (teamForm) {
       ["name", "tag"].forEach((field) => teamForm.elements[field].addEventListener("input", () => teamForm.elements[field].setCustomValidity("")));
+      teamForm.elements.coach.addEventListener("change", () => teamForm.elements.coach.setCustomValidity(""));
       teamForm.elements.logo.addEventListener("change", () => {
         const file = teamForm.elements.logo.files[0];
         const label = teamForm.querySelector("[data-logo-name]");
@@ -1727,10 +1890,14 @@
       const isEdit = teamForm.dataset.teamIndex !== undefined;
       const currentIndex = isEdit ? Number(teamForm.dataset.teamIndex) : -1;
       const others = managedTeams.filter((team, index) => index !== currentIndex);
+      ["name", "tag", "state", "coach"].forEach((field) => {
+        const el = teamForm.elements[field];
+        el.setCustomValidity(el.value.trim() ? "" : el.tagName === "SELECT" ? "Selecione um item da lista." : "Preencha este campo.");
+      });
       const nameValue = teamForm.elements.name.value.trim().toUpperCase();
       const tagValue = teamForm.elements.tag.value.trim().toUpperCase();
-      teamForm.elements.name.setCustomValidity(others.some((team) => team.name === nameValue) ? "Já existe uma equipe com este nome" : "");
-      teamForm.elements.tag.setCustomValidity(others.some((team) => team.tag === tagValue) ? "Já existe uma equipe com esta tag" : "");
+      if (nameValue) teamForm.elements.name.setCustomValidity(others.some((team) => team.name === nameValue) ? "Já existe uma equipe com este nome" : "");
+      if (tagValue) teamForm.elements.tag.setCustomValidity(others.some((team) => team.tag === tagValue) ? "Já existe uma equipe com esta tag" : "");
       if (!teamForm.reportValidity()) return;
       confirmAction({
         eyebrow: isEdit ? "EDITAR EQUIPE" : "CADASTRAR EQUIPE",
@@ -1739,7 +1906,7 @@
         details: [
           ["Nome", teamForm.elements.name.value.trim().toUpperCase()],
           ["Tag", teamForm.elements.tag.value.trim().toUpperCase()],
-          ["Estado", teamForm.elements.state.value],
+          ["Estado", (brazilianStates.find(([uf]) => uf === teamForm.elements.state.value) || ["", ""])[1]],
           ["Treinador responsável", teamForm.elements.coach.value]
         ],
         confirmLabel: isEdit ? "SALVAR ALTERAÇÕES" : "CADASTRAR EQUIPE",
@@ -1942,9 +2109,18 @@
     }
     const finalizeReview = document.querySelector("[data-finalize-review]");
     if (finalizeReview) finalizeReview.addEventListener("click", () => {
-      const dialog = document.querySelector("[data-finalize-dialog]");
+      const dialog = document.querySelector("[data-scoreboard-dialog]");
       if (dialog) dialog.showModal();
     });
+    document.querySelectorAll("[data-scoreboard-dialog] [data-score-row]").forEach((row) => row.addEventListener("input", () => {
+      const v = [...row.querySelectorAll("[data-score-stat]")].map((i) => i.value.trim());
+      const ok = row.querySelector("[data-score-agent]").value !== "Selecione" && v.every((x) => /^\d+$/.test(x));
+      if (/^\d+$/.test(v[0]) && /^\d+$/.test(v[1])) { const d = Number(v[0]) - Number(v[1]); row.querySelector("[data-score-diff]").textContent = `${d > 0 ? "+" : d < 0 ? "−" : ""}${Math.abs(d)}`; }
+      row.classList.toggle("is-missing", !ok);
+      const badge = row.querySelector("[data-score-status]");
+      badge.className = `status-badge status-badge--${ok ? "success" : "pending"}`;
+      badge.textContent = ok ? "COMPLETO" : "PENDENTE";
+    }));
 
   }
 
@@ -1971,6 +2147,7 @@
       revisoes: reviewsScreen,
       gravacoes: recordingsScreen,
       sincronizacao: synchronizationScreen,
+      preparando: preparingScreen,
       revisao: reviewScreen,
       sintese: synthesisScreen,
       "nova-partida": newMatchScreen,
@@ -1984,7 +2161,7 @@
     prototypeState.lastRoute = route;
     document.body.classList.toggle("is-capture", new URLSearchParams(window.location.search).has("captura"));
     app.innerHTML = screens[route]();
-    const titles = { equipe: "VOD Review — Administração", dashboard: "RUSH ONE — Dashboard", partidas: "RUSH ONE — Partidas", jogadores: "RUSH ONE — Jogadores", usuarios: "VOD Review — Administração", revisoes: "RUSH ONE — Revisões", gravacoes: "RUSH ONE — Gravações", sincronizacao: "RUSH ONE — Sincronização", revisao: "RUSH ONE — Revisão Multi-POV", sintese: "RUSH ONE — Síntese", "nova-partida": "RUSH ONE — Nova Partida", scoreboard: "RUSH ONE — Scoreboard", rastreabilidade: "VOD Review — Rastreabilidade" };
+    const titles = { equipe: "VOD Review — Administração", dashboard: "AZURE BEARS — Dashboard", partidas: "AZURE BEARS — Partidas", jogadores: "AZURE BEARS — Jogadores", usuarios: "VOD Review — Administração", revisoes: "AZURE BEARS — Revisões", gravacoes: "AZURE BEARS — Gravações", sincronizacao: "AZURE BEARS — Sincronização", preparando: "AZURE BEARS — Preparando a revisão", revisao: "AZURE BEARS — Revisão Multi-POV", sintese: "AZURE BEARS — Síntese", "nova-partida": "AZURE BEARS — Nova Partida", scoreboard: "AZURE BEARS — Scoreboard", rastreabilidade: "VOD Review — Rastreabilidade" };
     document.title = titles[route] || "VodReview";
     bindCommonInteractions();
     renderActionIcons();
@@ -2126,12 +2303,13 @@
     const select = event.target.closest("[data-sync-reference]");
     if (!select) return;
     const sync = prototypeState.sync;
-    const base = sync.offsets[select.value];
-    Object.keys(sync.offsets).forEach((n) => { sync.offsets[n] = Math.round((sync.offsets[n] - base) * 10) / 10; });
     sync.reference = select.value;
+    Object.keys(sync.offsets).forEach((n) => { sync.offsets[n] = 0; });
+    sync.detected = {};
+    sync.status = "pending";
     if (sync.selected === sync.reference) sync.selected = sync.names.find((n) => n !== sync.reference);
     render();
-    prototypeToast("Referência alterada: deslocamentos e instantes das anotações recalculados.");
+    prototypeToast("Referência alterada: refaça a sincronização a partir da nova referência.");
   });
 
   app.addEventListener("input", (event) => {
@@ -2165,15 +2343,16 @@
       if (step === 1) {
         const form = document.querySelector("[data-match-form]");
         const el = form.elements;
-        const opponent = el.opponent.value.trim().toLocaleUpperCase("pt-BR");
+        const free = form.querySelector("[data-opponent-free]").checked || !opponentTeams().length;
+        const opponent = (free ? el.opponent.value : el.opponentTeam.value).trim().toLocaleUpperCase("pt-BR");
         const datetime = el.datetime.value;
-        el.opponent.setCustomValidity(opponent ? "" : "Preencha este campo");
+        el.opponent.setCustomValidity(free && !opponent ? "Preencha este campo." : "");
+        el.opponentTeam.setCustomValidity(!free && !opponent ? "Selecione o adversário na lista." : "");
         let dateMsg = datetime ? "" : "Preencha este campo";
         if (!dateMsg && new Date(datetime) > new Date()) dateMsg = "A data e a hora não podem ser posteriores ao momento atual";
-        if (!dateMsg && prototypeState.matches.some((m) => m.id !== draft.id && m.opponent === opponent && m.map === el.map.value && m.datetime === datetime)) dateMsg = "Já existe uma partida com este adversário, mapa, data e hora";
         el.datetime.setCustomValidity(dateMsg);
         if (!form.reportValidity()) return;
-        Object.assign(draft, { opponent, event: el.event.value.trim(), datetime, type: el.type.value, map: el.map.value });
+        Object.assign(draft, { opponent, freeOpponent: free, event: el.event.value.trim(), datetime, type: form.querySelector("[name=type]:checked").value, map: form.querySelector("[name=map]:checked").value });
       }
       if (step === 3) {
         const participants = [...prototypeState.participants];
@@ -2183,7 +2362,7 @@
           Object.assign(match, { opponent: draft.opponent, event: draft.event, datetime: draft.datetime, type: draft.type, map: draft.map, participants });
         } else {
           draft.id = `m${Date.now()}`;
-          prototypeState.matches.unshift({ id: draft.id, opponent: draft.opponent, tag: "", datetime: draft.datetime, event: draft.event, type: draft.type, map: draft.map, status: "waiting", ours: null, theirs: null, participants, recordings: {} });
+          prototypeState.matches.unshift({ id: draft.id, opponent: draft.opponent, tag: (managedTeams.find((t) => t.name === draft.opponent) || {}).tag || "", datetime: draft.datetime, event: draft.event, type: draft.type, map: draft.map, status: "waiting", ours: null, theirs: null, participants, recordings: {} });
           prototypeState.matchCreated = true;
         }
         prototypeState.matchStep = 4;
@@ -2198,6 +2377,7 @@
     if (action === "match-back") { prototypeState.matchStep = Math.max(1, prototypeState.matchStep - 1); render(); }
     if (action === "select-match") {
       prototypeState.selectedMatch = control.dataset.match;
+      prototypeState.matchTab = "main";
       if (control.dataset.goto) { prototypeState.keepMatch = true; navigate(control.dataset.goto); return; }
       render();
     }
@@ -2206,7 +2386,16 @@
       prototypeState.recordingMatch = control.dataset.match;
       prototypeState.selectedMatch = control.dataset.match;
       prototypeState.recordingErrors = {};
-      navigate("gravacoes");
+      prototypeState.matchTab = "recordings";
+      if (getRoute() === "partidas") { render(); return; }
+      prototypeState.keepMatch = true;
+      navigate("partidas");
+    }
+    if (action === "match-tab") {
+      prototypeState.matchTab = control.dataset.tab;
+      prototypeState.recordingErrors = {};
+      render();
+      document.querySelector("[data-match-detail]")?.scrollIntoView({ block: "start" });
     }
     if (action === "open-remove-recording") {
       const match = findMatch(prototypeState.recordingMatch);
@@ -2214,7 +2403,7 @@
       const others = Object.keys(match.recordings).filter((n) => n !== name).length;
       openRecordingDialog({
         label: "REMOÇÃO DE GRAVAÇÃO", title: `Remover a gravação de ${name}?`, ok: "REMOVER GRAVAÇÃO",
-        body: `<p>O arquivo <strong>${match.recordings[name].file}</strong> será excluído do armazenamento.</p><p class="dialog-info">${others >= 2 ? "Restam duas ou mais gravações: a sincronização dos POVs deverá ser refeita." : "A partida passa a ter " + others + " gravação(ões)."} Se for a gravação de referência, uma nova referência será definida.</p>`,
+        body: `<p>O arquivo <strong>${match.recordings[name].file}</strong> será excluído do armazenamento.</p><p class="dialog-info">${name} ficará sem gravação e poderá receber outro arquivo enquanto a sessão de revisão não for criada.</p>`,
         run: () => { delete match.recordings[name]; render(); prototypeToast("Gravação removida com sucesso."); }
       });
     }
@@ -2274,7 +2463,7 @@
         const failed = prototypeState.syncScenarioApplied === "falha";
         const base = SYNC_TRUTH[sync.reference];
         sync.names.forEach((n) => {
-          const ok = !(failed && n === "Jhons");
+          const ok = !(failed && n === "greinzera");
           if (ok) { sync.offsets[n] = Math.round((SYNC_TRUTH[n] - base) * 10) / 10; sync.detected[n] = true; }
           else delete sync.detected[n];
         });
@@ -2299,12 +2488,11 @@
       window.setTimeout(() => {
         prototypeState.synthesisGenerating = false;
         if (getHashParams().has("falha")) { prototypeState.synthesisFailed = true; render(); prototypeToast("Não foi possível gerar a síntese."); return; }
-        const list = prototypeState.synthesisList = prototypeState.synthesisList || [];
-        const n = list.length + 1;
-        list.push({ n, at: n === 1 ? "28/03/2026 18:05" : "29/03/2026 10:12", notes: 3, score: prototypeState.scoreboardState === "corrected" ? "13 — 9" : "13 — 8" });
-        prototypeState.synthesisView = n;
+        const replaced = Boolean((prototypeState.synthesisList || []).length);
+        prototypeState.synthesisGen = (prototypeState.synthesisGen || 0) + 1;
+        prototypeState.synthesisList = [{ n: 1, at: replaced ? "29/03/2026 10:12" : "28/03/2026 18:05", notes: 3, score: prototypeState.scoreboardState === "corrected" ? "13 — 9" : "13 — 8" }];
         render();
-        prototypeToast(`Versão ${n} da síntese gerada com sucesso.`);
+        prototypeToast(replaced ? "Síntese gerada novamente: a anterior foi substituída." : "Síntese gerada com sucesso.");
       }, 1400);
     }
     if (action === "view-synthesis") { prototypeState.synthesisView = Number(control.dataset.version); render(); }
@@ -2370,6 +2558,25 @@
       prototypeToast("Jogador excluído com sucesso.");
     }
     if (action === "close-finalize") document.querySelector("[data-finalize-dialog]")?.close();
+    if (action === "close-scoreboard-dialog") document.querySelector("[data-scoreboard-dialog]")?.close();
+    if (action === "finalize-with-scoreboard") {
+      const dialog = document.querySelector("[data-scoreboard-dialog]");
+      const okInt = (v) => /^\d+$/.test(String(v).trim());
+      let bad = 0;
+      dialog.querySelectorAll("[data-score-row]").forEach((row) => {
+        const ok = row.querySelector("[data-score-agent]").value !== "Selecione" && [...row.querySelectorAll("[data-score-stat]")].every((i) => okInt(i.value));
+        row.classList.toggle("is-missing", !ok);
+        if (!ok) { bad += 1; const b = row.querySelector("[data-score-status]"); b.className = "status-badge status-badge--pending"; b.textContent = "INVÁLIDO"; }
+      });
+      const finalsOk = [...dialog.querySelectorAll("[data-score-final]")].every((i) => okInt(i.value));
+      const hint = dialog.querySelector("[data-score-hint]");
+      if (bad || !finalsOk) { hint.classList.add("is-error"); hint.textContent = `Complete o placar final e as estatísticas de ${bad} participante(s) para finalizar.`; return; }
+      dialog.close();
+      prototypeState.scoreboardState = "complete";
+      prototypeState.reviewReady = true;
+      render();
+      prototypeToast("Scoreboard registrado e revisão finalizada.");
+    }
     if (action === "confirm-finalize") {
       if (prototypeState.scoreboardState === "incomplete") return;
       document.querySelector("[data-finalize-dialog]")?.close();
@@ -2379,6 +2586,8 @@
     }
   });
 
+  new MutationObserver(() => { if (document.querySelector("[data-state-label]:empty")) syncStatePickers(); }).observe(document.body, { childList: true, subtree: true });
   window.addEventListener("hashchange", render);
   render();
+  syncStatePickers();
 })();
