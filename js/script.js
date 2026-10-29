@@ -445,8 +445,8 @@
                 <div class="match-versus__team"><img src="${opponentLogos[match.opponent] || assets.shieldLogo}" alt="${match.opponent}"><strong>${match.opponent}</strong><span>${match.tag || ""}</span></div>
               </div>
             </header>
-            <nav class="match-detail__tabs" role="tablist" aria-label="Detalhes da partida"><button class="${tab === "main" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "main"}" data-proto-action="match-tab" data-tab="main">${finalized ? "SCOREBOARD" : "PARTICIPANTES"}</button><button class="${tab === "recordings" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "recordings"}" data-proto-action="match-tab" data-tab="recordings">GRAVAÇÕES <span>${sent}</span></button><button type="button" data-route="${match.status === "waiting" ? (sent >= 2 ? "preparando" : "revisao") : "revisao"}"${match.status === "waiting" && !sent ? " disabled" : ""}>SESSÃO <span>${match.status === "waiting" ? 0 : 1}</span></button></nav>
-            ${tab === "recordings" ? recordingsPanel(match) : body}
+            <nav class="match-detail__tabs" role="tablist" aria-label="Detalhes da partida"><button class="${tab === "main" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "main"}" data-proto-action="match-tab" data-tab="main">${finalized ? "SCOREBOARD" : "PARTICIPANTES"}</button><button class="${tab === "recordings" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "recordings"}" data-proto-action="match-tab" data-tab="recordings">GRAVAÇÕES <span>${sent}</span></button><button class="${tab === "notes" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "notes"}" data-proto-action="match-tab" data-tab="notes">ANOTAÇÕES <span>${prototypeState.notes.length}</span></button><button class="${tab === "synthesis" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "synthesis"}" data-proto-action="match-tab" data-tab="synthesis">SÍNTESE</button><button type="button" data-route="${match.status === "waiting" ? (sent >= 2 ? "preparando" : "revisao") : "revisao"}"${match.status === "waiting" && !sent ? " disabled" : ""}>SESSÃO <span>${match.status === "waiting" ? 0 : 1}</span></button></nav>
+            ${tab === "recordings" ? recordingsPanel(match) : tab === "notes" ? matchNotesPanel(match) : tab === "synthesis" ? matchSynthesisPanel(match) : body}
             <footer class="match-detail__actions"><button class="module-secondary" type="button" data-route="nova-partida?editar=1">EDITAR PARTIDA</button>${finalized ? '<button class="module-secondary" type="button" data-route="scoreboard?correcao=1">CORRIGIR SCOREBOARD</button>' : ""}<button class="module-danger" type="button" data-proto-action="open-delete-match">EXCLUIR PARTIDA</button></footer>
           </article>`;
   }
@@ -2481,7 +2481,7 @@
       render();
       prototypeToast("Sincronização validada com sucesso.");
     }
-    if (action === "generate-synthesis") {
+    if (action === "generate-synthesis" || action === "generate-synthesis-inline") {
       prototypeState.synthesisGenerating = true;
       prototypeState.synthesisFailed = false;
       render();
