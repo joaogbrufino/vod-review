@@ -1013,17 +1013,11 @@
       prototypeState.sync = syncScenario("validada");
       navigate("revisao");
     }, 6200);
-    const steps = [["Verificando as gravações", "4 POVs em MP4 (H.264)"], ["Lendo o relógio da rodada", "Reconhecimento óptico (OCR) do placar e do tempo"], ["Alinhando os pontos de vista", "Calculando o deslocamento de cada gravação"], ["Montando a linha do tempo", "Preparando a reprodução sincronizada"]];
     return focusShell({ screen: "preparando", activeNav: "reviews", content: `
-      <section class="prep-screen${hold ? " is-hold" : ""}" aria-live="polite">
-        <div class="prep-screen__bg" aria-hidden="true">${["Ascent"].map((m) => `<img src="${mapImages[m]}" alt="">`).join("")}</div>
-        <div class="prep-card">
-          <div class="prep-orbit" aria-hidden="true"><span></span><span></span><span></span><b>${["André", "kick", "pim", "greinzera"].map((n) => playerAvatar(n)).join("")}</b></div>
-          <span class="module-label">AZURE BEARS × WOLF GAMING · ASCENT</span>
-          <h1>Preparando a revisão</h1>
-          <p>Estamos sincronizando automaticamente os pontos de vista. Isso leva alguns segundos.</p>
-          <div class="prep-progress" aria-hidden="true"><i></i></div>
-          <ol class="prep-steps">${steps.map(([t, d], i) => `<li style="--i:${i}"><span class="prep-steps__icon" aria-hidden="true"></span><div><strong>${t}</strong><small>${d}</small></div></li>`).join("")}</ol>
+      <section class="prep-screen" aria-busy="true">
+        <div class="prep-loading" role="status" aria-live="polite">
+          <span class="prep-loading__spinner" aria-hidden="true"></span>
+          <p class="prep-loading__text">Sincronizando os pontos de vista…</p>
         </div>
       </section>` });
   }

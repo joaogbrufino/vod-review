@@ -6876,3 +6876,76 @@ dialog[data-team-dialog], dialog[data-team-dialog] .dialog-fields { overflow: vi
     width: 60%;
   }
 }
+
+/* ==========================================================================
+   Sincronização · tela de carregamento (somente texto + loader)
+   ========================================================================== */
+
+.prep-screen {
+  display: grid;
+  place-items: center;
+  min-height: calc(100vh - 120px);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  overflow: hidden;
+}
+
+/* Remove a composição anterior (fundo, órbita, barra e lista de etapas) */
+.prep-screen::after,
+.prep-screen__bg,
+.prep-card,
+.prep-orbit,
+.prep-progress,
+.prep-steps {
+  display: none;
+}
+
+.prep-loading {
+  display: grid;
+  justify-items: center;
+  gap: 22px;
+  /* Entrada: surge suavemente ao abrir a tela */
+  animation: prep-loading-in .5s ease-out both;
+}
+
+.prep-loading__spinner {
+  width: 46px;
+  height: 46px;
+  border: 2px solid rgba(74, 222, 128, .16);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  /* Gira continuamente e respira (entrada e saída) */
+  animation: prep-spin 1s linear infinite, prep-breathe 1.8s ease-in-out infinite;
+}
+
+.prep-loading__text {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--type-label);
+  font-weight: 600;
+  letter-spacing: .04em;
+  color: var(--muted);
+  text-align: center;
+  animation: prep-breathe 1.8s ease-in-out infinite;
+}
+
+@keyframes prep-loading-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes prep-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Efeito de entrada e saída: esmaece e retorna em ciclo */
+@keyframes prep-breathe {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .3; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prep-loading { animation: none; }
+  .prep-loading__spinner { animation: prep-spin 1.6s linear infinite; }
+  .prep-loading__text { animation: none; }
+}
