@@ -423,6 +423,126 @@
     </section>`;
   }
 
+  // Aba ANOTAÇÕES do detalhe da partida (RF011): consulta das anotações da sessão,
+  // disponível durante a revisão em andamento e após a finalização.
+  function matchNotesPanel(match) {
+    const all = [...prototypeState.notes].sort((a, b) => a.time - b.time);
+    const filter = prototypeState.matchNotesFilter || "all";
+    const notes = filter === "all" ? all : filter === "team" ? all.filter((n) => n.target === "EQUIPE") : all.filter((n) => n.target !== "EQUIPE");
+    const live = match.status === "progress";
+    const counts = { all: all.length, team: all.filter((n) => n.target === "EQUIPE").length, players: all.filter((n) => n.target !== "EQUIPE").length };
+    const chips = [["all", "TODAS"], ["team", "EQUIPE"], ["players", "JOGADORES"]]
+      .map(([key, label]) => `<button type="button" class="notes-chip${filter === key ? " is-active" : ""}" data-proto-action="match-notes-filter" data-filter="${key}" aria-pressed="${filter === key}">${label}<span>${counts[key]}</span></button>`).join("");
+
+    const item = (note, index) => {
+      const team = note.target === "EQUIPE";
+      const player = team ? null : rosterPlayers.find((r) => r.name === note.target);
+      return `<article class="match-note" aria-label="Anotação ${index + 1} de ${notes.length}">
+          <span class="match-note__rail" aria-hidden="true"><i></i></span>
+          <span class="match-note__time"><i data-lucide="clock-3" aria-hidden="true"></i>${mmss(note.time)}</span>
+          <div class="match-note__body">
+            <header class="match-note__head">
+              ${team
+                ? '<span class="match-note__target match-note__target--team"><i data-lucide="users-round" aria-hidden="true"></i>EQUIPE</span>'
+                : `<span class="match-note__target">${playerAvatar(note.target)}<strong>${note.target}</strong>${player ? `<small>${player.role}</small>` : ""}</span>`}
+              <span class="match-note__index">#${String(index + 1).padStart(2, "0")}</span>
+            </header>
+            <p>${note.body.replace(/</g, "&lt;")}</p>
+          </div>
+        </article>`;
+    };
+
+    const body = notes.length
+      ? `<ol class="match-notes__list">${notes.map((n, i) => `<li>${item(n, i)}</li>`).join("")}</ol>`
+      : `<div class="match-empty-state">
+          <i data-lucide="notebook-pen" aria-hidden="true"></i>
+          <strong>${all.length ? "NENHUMA ANOTAÇÃO NESTE FILTRO" : "NENHUMA ANOTAÇÃO REGISTRADA"}</strong>
+          <p>${all.length ? "Ajuste o filtro acima para visualizar as demais anotações da sessão." : "As anotações são registradas na sessão de revisão, vinculadas ao instante do vídeo e à equipe ou a um jogador."}</p>
+        </div>`;
+
+    return `<div class="match-notes-panel">
+        <div class="match-panel__head">
+          <div><span class="module-label">ANOTAÇÕES DA REVISÃO</span><strong>${all.length} ${all.length === 1 ? "anotação registrada" : "anotações registradas"}</strong></div>
+          <span class="status-badge status-badge--${live ? "progress" : "success"}">${live ? "REVISÃO EM ANDAMENTO" : "REVISÃO FINALIZADA"}</span>
+        </div>
+        <div class="match-notes__filters" role="group" aria-label="Filtrar anotações">${chips}</div>
+        ${body}
+        <p class="dialog-info">${live
+          ? "A sessão está em andamento: as anotações aparecem aqui conforme são criadas na revisão. A edição e a exclusão são feitas na própria sessão."
+          : "A sessão está finalizada: as anotações ficam disponíveis somente para consulta e compõem a base da síntese da partida."}</p>
+      </div>`;
+  }
+
+  // Aba SÍNTESE do detalhe da partida (RF013): gerada uma única vez por partida,
+  // somente após a finalização da sessão de revisão.
+  function matchSynthesisPanel(match) {
+    prototypeState.matchSynthesis = prototypeState.matchSynthesis || {};
+    const entry = prototypeState.matchSynthesis[match.id];
+    const finalized = match.status === "finalized";
+    const notes = prototypeState.notes.length;
+
+    const frame = (inner, actions = "") => `<div class="match-synthesis-panel">
+        <div class="match-panel__head">
+          <div><span class="module-label">SÍNTESE DA PARTIDA</span><strong>AZURE BEARS × ${match.opponent} · ${match.map.toLocaleUpperCase("pt-BR")}</strong></div>
+          <span class="status-badge status-badge--${entry && entry.status === "ready" ? "success" : entry && entry.status === "generating" ? "progress" : "pending"}">${
+            !finalized ? "INDISPONÍVEL" : entry && entry.status === "ready" ? "GERADA" : entry && entry.status === "generating" ? "GERANDO" : entry && entry.status === "failed" ? "FALHA" : "NÃO GERADA"}</span>
+        </div>
+        ${inner}
+        ${actions}
+      </div>`;
+
+    if (!finalized) {
+      return frame(`<div class="match-empty-state">
+          <i data-lucide="lock" aria-hidden="true"></i>
+          <strong>SÍNTESE INDISPONÍVEL</strong>
+          <p>A síntese é gerada a partir das anotações e do scoreboard, por isso só pode ser solicitada após a finalização da sessão de revisão desta partida.</p>
+        </div>
+        <p class="dialog-info">Finalize a sessão de revisão registrando o scoreboard da partida para liberar a geração da síntese.</p>`);
+    }
+
+    if (entry && entry.status === "generating") {
+      return frame(`<div class="match-empty-state is-loading">
+          <i data-lucide="sparkles" aria-hidden="true"></i>
+          <strong>GERANDO SÍNTESE…</strong>
+          <p>As anotações e o scoreboard estão sendo enviados ao modelo de linguagem com os nomes dos jogadores substituídos por pseudônimos.</p>
+          <i class="recording-progress" aria-hidden="true"><b></b></i>
+        </div>`);
+    }
+
+    if (entry && entry.status === "failed") {
+      return frame(`<div class="match-empty-state is-error">
+          <i data-lucide="circle-alert" aria-hidden="true"></i>
+          <strong>NÃO FOI POSSÍVEL GERAR A SÍNTESE</strong>
+          <p>O serviço do modelo de linguagem não respondeu. Nenhuma síntese foi registrada para esta partida; você pode solicitar a geração novamente.</p>
+        </div>
+        <div class="match-panel__actions"><button class="module-primary" type="button" data-proto-action="match-generate-synthesis" data-match="${match.id}">TENTAR NOVAMENTE</button></div>`);
+    }
+
+    if (!entry) {
+      return frame(`<div class="match-empty-state">
+          <i data-lucide="sparkles" aria-hidden="true"></i>
+          <strong>NENHUMA SÍNTESE GERADA</strong>
+          <p>A síntese reúne as ${notes} ${notes === 1 ? "anotação" : "anotações"} da revisão e o scoreboard final em uma leitura única da partida, com visão geral, pontos de atenção e foco para a próxima sessão.</p>
+        </div>
+        <ul class="synthesis-basis-list">
+          <li><i data-lucide="notebook-pen" aria-hidden="true"></i><span><strong>${notes} ${notes === 1 ? "anotação" : "anotações"}</strong><small>Registradas na sessão de revisão</small></span></li>
+          <li><i data-lucide="chart-no-axes-combined" aria-hidden="true"></i><span><strong>Scoreboard ${match.ours} — ${match.theirs}</strong><small>Estatísticas dos ${match.participants.length} participantes</small></span></li>
+          <li><i data-lucide="shield-check" aria-hidden="true"></i><span><strong>Pseudônimos</strong><small>Nomes dos jogadores não são enviados ao modelo (LGPD)</small></span></li>
+        </ul>
+        <p class="dialog-info">A síntese é gerada uma única vez por partida e fica preservada para consulta.</p>
+        <div class="match-panel__actions"><button class="module-primary" type="button" data-proto-action="match-generate-synthesis" data-match="${match.id}">GERAR SÍNTESE</button></div>`);
+    }
+
+    const text = SYNTH_TEXT[2];
+    return frame(`<p class="synthesis-basis"><i data-lucide="sparkles" aria-hidden="true"></i>Gerada em ${entry.at} · ${entry.notes} ${entry.notes === 1 ? "anotação" : "anotações"} · placar ${entry.score}</p>
+        <div class="synthesis-copy">
+          <section><h3><i data-lucide="eye" aria-hidden="true"></i>VISÃO GERAL</h3><p>${text.overview}</p></section>
+          <section><h3><i data-lucide="target" aria-hidden="true"></i>PONTOS DE ATENÇÃO</h3><ul class="synthesis-points">${text.points.map((x) => `<li>${x}</li>`).join("")}</ul></section>
+          <section><h3><i data-lucide="arrow-right" aria-hidden="true"></i>PRÓXIMA SESSÃO</h3><p>${text.next}</p></section>
+        </div>
+        <p class="dialog-info">Esta síntese foi gerada uma única vez a partir das anotações e do scoreboard registrados na finalização da revisão, e é preservada como registro da partida.</p>`);
+  }
+
   function matchDetail(match) {
     const result = matchResult(match);
     const finalized = match.status === "finalized";
@@ -432,7 +552,7 @@
               <div class="scoreboard-legend"><span>PLACAR FINAL E ESTATÍSTICAS DOS PARTICIPANTES</span><span>K · D · A · <abbr title="Primeiros abates">FK</abbr> · SALDO</span></div>
               ${scoreboardTable("AZURE BEARS", "AZR", assets.azure, String(match.ours), "home", homeScoreboard.filter((row) => match.participants.includes(row.player)))}</div>`
       : `<div class="match-participants"><div class="scoreboard-legend"><span>PARTICIPANTES DA PARTIDA</span><span>${players.length} DE 5</span></div><div class="match-participants__list">${players.map((player) => `<span>${playerAvatar(player.name)}<strong>${player.name}</strong><small>${player.role} · ${match.recordings[player.name] ? "gravação enviada" : "sem gravação"}</small></span>`).join("")}</div><p class="dialog-info">O placar final e as estatísticas individuais são registrados na finalização da sessão de revisão.</p></div>`;
-    const tab = prototypeState.matchTab === "recordings" ? "recordings" : "main";
+    const tab = ["recordings", "notes", "synthesis"].includes(prototypeState.matchTab) ? prototypeState.matchTab : "main";
     if (tab === "recordings") prototypeState.recordingMatch = match.id;
     return `<article class="match-detail" id="selected-match-detail" data-match-detail tabindex="-1">
             <div class="match-detail__navigation"><button class="module-secondary" type="button" data-proto-action="close-match">← VOLTAR À LISTAGEM</button></div>
@@ -445,7 +565,7 @@
                 <div class="match-versus__team"><img src="${opponentLogos[match.opponent] || assets.shieldLogo}" alt="${match.opponent}"><strong>${match.opponent}</strong><span>${match.tag || ""}</span></div>
               </div>
             </header>
-            <nav class="match-detail__tabs" role="tablist" aria-label="Detalhes da partida"><button class="${tab === "main" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "main"}" data-proto-action="match-tab" data-tab="main">${finalized ? "SCOREBOARD" : "PARTICIPANTES"}</button><button class="${tab === "recordings" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "recordings"}" data-proto-action="match-tab" data-tab="recordings">GRAVAÇÕES <span>${sent}</span></button><button class="${tab === "notes" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "notes"}" data-proto-action="match-tab" data-tab="notes">ANOTAÇÕES <span>${prototypeState.notes.length}</span></button><button class="${tab === "synthesis" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "synthesis"}" data-proto-action="match-tab" data-tab="synthesis">SÍNTESE</button><button type="button" data-route="${match.status === "waiting" ? (sent >= 2 ? "preparando" : "revisao") : "revisao"}"${match.status === "waiting" && !sent ? " disabled" : ""}>SESSÃO <span>${match.status === "waiting" ? 0 : 1}</span></button></nav>
+            <nav class="match-detail__tabs" role="tablist" aria-label="Detalhes da partida"><button class="${tab === "main" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "main"}" data-proto-action="match-tab" data-tab="main"><i data-lucide="${finalized ? "chart-no-axes-combined" : "users-round"}" aria-hidden="true"></i>${finalized ? "SCOREBOARD" : "PARTICIPANTES"}</button><button class="${tab === "recordings" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "recordings"}" data-proto-action="match-tab" data-tab="recordings"><i data-lucide="video" aria-hidden="true"></i>GRAVAÇÕES <span>${sent}</span></button><button class="${tab === "notes" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "notes"}" data-proto-action="match-tab" data-tab="notes"><i data-lucide="notebook-pen" aria-hidden="true"></i>ANOTAÇÕES <span>${prototypeState.notes.length}</span></button><button class="${tab === "synthesis" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "synthesis"}" data-proto-action="match-tab" data-tab="synthesis"><i data-lucide="sparkles" aria-hidden="true"></i>SÍNTESE${finalized && prototypeState.matchSynthesis && prototypeState.matchSynthesis[match.id] && prototypeState.matchSynthesis[match.id].status === "ready" ? '<b class="tab-dot" aria-label="Síntese gerada"></b>' : ""}</button><button type="button" data-route="${match.status === "waiting" ? (sent >= 2 ? "preparando" : "revisao") : "revisao"}"${match.status === "waiting" && !sent ? " disabled" : ""}><i data-lucide="play" aria-hidden="true"></i>SESSÃO <span>${match.status === "waiting" ? 0 : 1}</span></button></nav>
             ${tab === "recordings" ? recordingsPanel(match) : tab === "notes" ? matchNotesPanel(match) : tab === "synthesis" ? matchSynthesisPanel(match) : body}
             <footer class="match-detail__actions"><button class="module-secondary" type="button" data-route="nova-partida?editar=1">EDITAR PARTIDA</button>${finalized ? '<button class="module-secondary" type="button" data-route="scoreboard?correcao=1">CORRIGIR SCOREBOARD</button>' : ""}<button class="module-danger" type="button" data-proto-action="open-delete-match">EXCLUIR PARTIDA</button></footer>
           </article>`;
@@ -2391,9 +2511,37 @@
       prototypeState.keepMatch = true;
       navigate("partidas");
     }
+    if (action === "match-notes-filter") {
+      prototypeState.matchNotesFilter = control.dataset.filter;
+      render();
+    }
+    if (action === "match-generate-synthesis") {
+      const id = control.dataset.match;
+      prototypeState.matchSynthesis = prototypeState.matchSynthesis || {};
+      prototypeState.matchSynthesis[id] = { status: "generating" };
+      render();
+      window.setTimeout(() => {
+        const target = findMatch(id);
+        if (getHashParams().has("falha")) {
+          prototypeState.matchSynthesis[id] = { status: "failed" };
+          render();
+          prototypeToast("Não foi possível gerar a síntese.");
+          return;
+        }
+        prototypeState.matchSynthesis[id] = {
+          status: "ready",
+          at: "28/03/2026 18:05",
+          notes: prototypeState.notes.length,
+          score: target ? `${target.ours} — ${target.theirs}` : "—"
+        };
+        render();
+        prototypeToast("Síntese gerada com sucesso.");
+      }, 1600);
+    }
     if (action === "match-tab") {
       prototypeState.matchTab = control.dataset.tab;
       prototypeState.recordingErrors = {};
+      prototypeState.matchNotesFilter = "all";
       render();
       document.querySelector("[data-match-detail]")?.scrollIntoView({ block: "start" });
     }
