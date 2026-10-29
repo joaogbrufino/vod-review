@@ -6949,3 +6949,10 @@ dialog[data-team-dialog], dialog[data-team-dialog] .dialog-fields { overflow: vi
   .prep-loading__spinner { animation: prep-spin 1.6s linear infinite; }
   .prep-loading__text { animation: none; }
 }
+
+/* Aviso de scoreboard corrigido após a geração da síntese */
+.synthesis-corrected {
+  margin: 0;
+  border-color: rgba(250, 204, 21, .35);
+  color: #facc15;
+}

@@ -425,8 +425,40 @@
 
   // Aba ANOTAÇÕES do detalhe da partida (RF011): consulta das anotações da sessão,
   // disponível durante a revisão em andamento e após a finalização.
+  // anotações por partida: a partida em andamento usa as anotações da sessão da revisão; as finalizadas têm as suas;
+  // partida aguardando gravações ainda não possui sessão (RN007/RN036)
+  const MATCH_NOTES = {
+    m1: [
+      { id: 101, target: "EQUIPE", time: 154, body: "Boa leitura do retake no A: manter a dupla Killjoy e Viper no mesmo lado." },
+      { id: 102, target: "kick", time: 612, body: "Entrada pelo C sem flash de apoio no round 9; esperar o utilitário do Sova." },
+      { id: 103, target: "pim", time: 1288, body: "Setup do Killjoy no B segurou duas execuções seguidas. Repetir no próximo treino." }],
+    m4: [
+      { id: 201, target: "EQUIPE", time: 233, body: "Controle do meio no Split decidiu o primeiro half; manter a pressão no Mid Vents." },
+      { id: 202, target: "greinzera", time: 905, body: "Recon do Sova revelou o stack no B; comunicação rápida garantiu a rotação." }],
+    m5: [
+      { id: 301, target: "EQUIPE", time: 410, body: "Perdemos três rounds de eco seguidos; revisar o padrão de compra forçada." },
+      { id: 302, target: "taek", time: 1032, body: "Smokes da Viper atrasadas no retake do A; antecipar a linha antes da entrada." },
+      { id: 303, target: "André", time: 1717, body: "Boa chamada de rotação no round 20, depois do som no B." },
+      { id: 304, target: "kick", time: 2041, body: "Duelo aberto sem trade no round 22; jogar perto do Sova." }]
+  };
+  const matchNotes = (match) => match.status === "waiting" ? null : match.id === "m2" ? prototypeState.notes : (MATCH_NOTES[match.id] || []);
+
   function matchNotesPanel(match) {
-    const all = [...prototypeState.notes].sort((a, b) => a.time - b.time);
+    const own = matchNotes(match);
+    if (!own) {
+      return `<div class="match-notes-panel">
+        <div class="match-panel__head">
+          <div><span class="module-label">ANOTAÇÕES DA REVISÃO</span><strong>Sem sessão de revisão</strong></div>
+          <span class="status-badge status-badge--pending">AGUARDANDO GRAVAÇÕES</span>
+        </div>
+        <div class="match-empty-state">
+          <i data-lucide="notebook-pen" aria-hidden="true"></i>
+          <strong>SEM SESSÃO DE REVISÃO</strong>
+          <p>As anotações são registradas na sessão de revisão, criada quando o treinador inicia a revisão com ao menos uma gravação enviada.</p>
+        </div>
+      </div>`;
+    }
+    const all = [...own].sort((a, b) => a.time - b.time);
     const filter = prototypeState.matchNotesFilter || "all";
     const notes = filter === "all" ? all : filter === "team" ? all.filter((n) => n.target === "EQUIPE") : all.filter((n) => n.target !== "EQUIPE");
     const live = match.status === "progress";
@@ -479,7 +511,7 @@
     prototypeState.matchSynthesis = prototypeState.matchSynthesis || {};
     const entry = prototypeState.matchSynthesis[match.id];
     const finalized = match.status === "finalized";
-    const notes = prototypeState.notes.length;
+    const notes = (matchNotes(match) || []).length;
 
     const frame = (inner, actions = "") => `<div class="match-synthesis-panel">
         <div class="match-panel__head">
@@ -533,8 +565,8 @@
         <div class="match-panel__actions"><button class="module-primary" type="button" data-proto-action="match-generate-synthesis" data-match="${match.id}">GERAR SÍNTESE</button></div>`);
     }
 
-    const text = SYNTH_TEXT[2];
-    return frame(`<p class="synthesis-basis"><i data-lucide="sparkles" aria-hidden="true"></i>Gerada em ${entry.at} · ${entry.notes} ${entry.notes === 1 ? "anotação" : "anotações"} · placar ${entry.score}</p>
+    const text = MATCH_SYNTH[match.id] || SYNTH_TEXT[2];
+    return frame(`${entry.corrected ? '<p class="dialog-info synthesis-corrected">O scoreboard foi corrigido após a geração desta síntese. A síntese representa o placar considerado na geração.</p>' : ""}<p class="synthesis-basis"><i data-lucide="sparkles" aria-hidden="true"></i>Gerada em ${entry.at} · ${entry.notes} ${entry.notes === 1 ? "anotação" : "anotações"} · placar ${entry.score}</p>
         <div class="synthesis-copy">
           <section><h3><i data-lucide="eye" aria-hidden="true"></i>VISÃO GERAL</h3><p>${text.overview}</p></section>
           <section><h3><i data-lucide="target" aria-hidden="true"></i>PONTOS DE ATENÇÃO</h3><ul class="synthesis-points">${text.points.map((x) => `<li>${x}</li>`).join("")}</ul></section>
@@ -565,7 +597,7 @@
                 <div class="match-versus__team"><img src="${opponentLogos[match.opponent] || assets.shieldLogo}" alt="${match.opponent}"><strong>${match.opponent}</strong><span>${match.tag || ""}</span></div>
               </div>
             </header>
-            <nav class="match-detail__tabs" role="tablist" aria-label="Detalhes da partida"><button class="${tab === "main" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "main"}" data-proto-action="match-tab" data-tab="main"><i data-lucide="${finalized ? "chart-no-axes-combined" : "users-round"}" aria-hidden="true"></i>${finalized ? "SCOREBOARD" : "PARTICIPANTES"}</button><button class="${tab === "recordings" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "recordings"}" data-proto-action="match-tab" data-tab="recordings"><i data-lucide="video" aria-hidden="true"></i>GRAVAÇÕES <span>${sent}</span></button><button class="${tab === "notes" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "notes"}" data-proto-action="match-tab" data-tab="notes"><i data-lucide="notebook-pen" aria-hidden="true"></i>ANOTAÇÕES <span>${prototypeState.notes.length}</span></button><button class="${tab === "synthesis" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "synthesis"}" data-proto-action="match-tab" data-tab="synthesis"><i data-lucide="sparkles" aria-hidden="true"></i>SÍNTESE${finalized && prototypeState.matchSynthesis && prototypeState.matchSynthesis[match.id] && prototypeState.matchSynthesis[match.id].status === "ready" ? '<b class="tab-dot" aria-label="Síntese gerada"></b>' : ""}</button><button type="button" data-route="${match.status === "waiting" ? (sent >= 2 ? "preparando" : "revisao") : "revisao"}"${match.status === "waiting" && !sent ? " disabled" : ""}><i data-lucide="play" aria-hidden="true"></i>SESSÃO <span>${match.status === "waiting" ? 0 : 1}</span></button></nav>
+            <nav class="match-detail__tabs" role="tablist" aria-label="Detalhes da partida"><button class="${tab === "main" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "main"}" data-proto-action="match-tab" data-tab="main"><i data-lucide="${finalized ? "chart-no-axes-combined" : "users-round"}" aria-hidden="true"></i>${finalized ? "SCOREBOARD" : "PARTICIPANTES"}</button><button class="${tab === "recordings" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "recordings"}" data-proto-action="match-tab" data-tab="recordings"><i data-lucide="video" aria-hidden="true"></i>GRAVAÇÕES <span>${sent}</span></button><button class="${tab === "notes" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "notes"}" data-proto-action="match-tab" data-tab="notes"><i data-lucide="notebook-pen" aria-hidden="true"></i>ANOTAÇÕES <span>${(matchNotes(match) || []).length}</span></button><button class="${tab === "synthesis" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "synthesis"}" data-proto-action="match-tab" data-tab="synthesis"><i data-lucide="sparkles" aria-hidden="true"></i>SÍNTESE${finalized && prototypeState.matchSynthesis && prototypeState.matchSynthesis[match.id] && prototypeState.matchSynthesis[match.id].status === "ready" ? '<b class="tab-dot" aria-label="Síntese gerada"></b>' : ""}</button><button type="button" data-route="${match.status === "waiting" ? (sent >= 2 ? "preparando" : "revisao") : "revisao"}"${match.status === "waiting" && !sent ? " disabled" : ""}><i data-lucide="play" aria-hidden="true"></i>SESSÃO <span>${match.status === "waiting" ? 0 : 1}</span></button></nav>
             ${tab === "recordings" ? recordingsPanel(match) : tab === "notes" ? matchNotesPanel(match) : tab === "synthesis" ? matchSynthesisPanel(match) : body}
             <footer class="match-detail__actions"><button class="module-secondary" type="button" data-route="nova-partida?editar=1">EDITAR PARTIDA</button>${finalized ? '<button class="module-secondary" type="button" data-route="scoreboard?correcao=1">CORRIGIR SCOREBOARD</button>' : ""}<button class="module-danger" type="button" data-proto-action="open-delete-match">EXCLUIR PARTIDA</button></footer>
           </article>`;
@@ -601,7 +633,7 @@
         </main>
         ${reviewPanel()}
       </div>
-      ${selected ? `<dialog class="module-dialog confirm-dialog" data-delete-match-dialog><form method="dialog"><header><div><span class="module-label">EXCLUSÃO DEFINITIVA</span><h2>Excluir AZURE BEARS × ${selected.opponent}?</h2></div><button type="button" data-proto-action="close-delete-match" aria-label="Fechar">×</button></header><div class="dialog-fields"><p>A exclusão é definitiva e remove também os registros associados:</p><ul class="cascade-list"><li>participantes, scoreboard e estatísticas individuais</li><li>gravações e arquivos de vídeo armazenados</li><li>sessão de revisão, anotações e sínteses</li></ul><p class="dialog-info">Os indicadores da equipe e dos jogadores deixam de considerar esta partida.</p></div><footer><button class="module-secondary" type="button" data-proto-action="close-delete-match">CANCELAR</button><button class="module-danger" type="button" data-proto-action="confirm-delete-match">EXCLUIR PARTIDA</button></footer></form></dialog>` : ""}
+      ${selected ? `<dialog class="module-dialog confirm-dialog" data-delete-match-dialog><form method="dialog"><header><div><span class="module-label">EXCLUSÃO DEFINITIVA</span><h2>Excluir AZURE BEARS × ${selected.opponent}?</h2></div><button type="button" data-proto-action="close-delete-match" aria-label="Fechar">×</button></header><div class="dialog-fields"><p>A exclusão é definitiva e remove também os registros associados:</p><ul class="cascade-list"><li>participantes, scoreboard e estatísticas individuais</li><li>gravações e arquivos de vídeo armazenados</li><li>sessão de revisão, anotações e síntese</li></ul><p class="dialog-info">Os indicadores da equipe e dos jogadores deixam de considerar esta partida.</p></div><footer><button class="module-secondary" type="button" data-proto-action="close-delete-match">CANCELAR</button><button class="module-danger" type="button" data-proto-action="confirm-delete-match">EXCLUIR PARTIDA</button></footer></form></dialog>` : ""}
       <div class="app-toast" role="status" aria-live="polite" data-toast></div>
     </section>`;
   }
@@ -837,7 +869,7 @@
           </aside>
         </div>
         <dialog class="module-dialog" data-player-dialog><form method="dialog" data-player-form novalidate><header><div><span class="module-label">JOGADOR DA EQUIPE</span><h2 data-player-dialog-title>EDITAR JOGADOR</h2></div><button type="button" data-proto-action="close-player-dialog" aria-label="Fechar">×</button></header><div class="dialog-fields"><label class="logo-field"><span>FOTO</span><span class="logo-upload"><span class="module-secondary">SELECIONAR IMAGEM</span><small data-photo-name>PNG ou JPG · até 2 MB · opcional · sem foto, é exibida a inicial</small></span><input name="photo" type="file" accept="image/png,image/jpeg"></label><label><span>NICKNAME</span><input name="nickname" required maxlength="50" placeholder="Nome utilizado no jogo"></label><label><span>NOME COMPLETO</span><input name="fullName" required maxlength="150" placeholder="Nome completo do jogador"></label><label><span>RIOT ID</span><input name="riotId" required maxlength="22" placeholder="nome#tag"><small class="dialog-fields__hint">Nome de 3 a 16 caracteres e tag de 3 a 5 letras ou números.</small></label><label><span>FUNÇÃO PRINCIPAL</span><select name="role" required><option>CONTROLADOR</option><option>DUELISTA</option><option>INICIADOR</option><option>SENTINELA</option></select></label><p class="dialog-info dialog-info--consent">Ao cadastrar o jogador, o treinador declara ter obtido o consentimento dele para o registro destes dados e o uso de suas gravações nas revisões da equipe (LGPD).</p></div><footer><button class="module-danger" type="button" data-proto-action="open-remove-player" data-player-delete>EXCLUIR JOGADOR</button><button class="module-secondary" type="button" data-proto-action="close-player-dialog">CANCELAR</button><button class="module-primary" type="button" data-proto-action="save-player">SALVAR JOGADOR</button></footer></form></dialog>
-        <dialog class="module-dialog confirm-dialog" data-remove-player-dialog><form method="dialog"><header><div><span class="module-label">EXCLUSÃO DE JOGADOR</span><h2>Excluir ${player ? player.name : ""}?</h2></div><button type="button" data-proto-action="close-remove-player" aria-label="Fechar">×</button></header><div class="dialog-fields">${hasData ? `<p>${player.name} possui <strong>${player.matches} participações</strong> registradas em partidas. Para preservar os resultados da equipe, a aplicação manterá o histórico sem identificar o jogador:</p><ul class="cascade-list"><li>nome completo e nickname substituídos por “Jogador removido 01”</li><li>Riot ID removido</li><li>gravações do jogador e arquivos de vídeo excluídos; nas sessões, o POV passa a indicar “Gravação removida”</li><li>participações, estatísticas e anotações preservadas</li></ul><p class="dialog-info">O jogador deixa o elenco e não poderá ser selecionado em novas partidas. Esta ação não pode ser desfeita.</p>` : `<p>${player ? player.name : ""} não possui participações registradas em partidas.</p><p class="dialog-info">A exclusão é definitiva: os dados do jogador serão removidos e não poderão ser recuperados.</p>`}</div><footer><button class="module-secondary" type="button" data-proto-action="close-remove-player">CANCELAR</button><button class="module-danger" type="button" data-proto-action="remove-player">EXCLUIR JOGADOR</button></footer></form></dialog>`
+        <dialog class="module-dialog confirm-dialog" data-remove-player-dialog><form method="dialog"><header><div><span class="module-label">EXCLUSÃO DE JOGADOR</span><h2>Excluir ${player ? player.name : ""}?</h2></div><button type="button" data-proto-action="close-remove-player" aria-label="Fechar">×</button></header><div class="dialog-fields">${hasData ? `<p>${player.name} possui <strong>${player.matches} participações</strong> registradas em partidas. Para preservar os resultados da equipe, a aplicação manterá o histórico sem identificar o jogador:</p><ul class="cascade-list"><li>nome completo e nickname substituídos por “Jogador removido 01”</li><li>Riot ID e foto removidos</li><li>gravações do jogador e arquivos de vídeo excluídos; nas sessões, o POV passa a indicar “Gravação removida”</li><li>participações, estatísticas e anotações preservadas</li></ul><p class="dialog-info">O jogador deixa o elenco e não poderá ser selecionado em novas partidas. Esta ação não pode ser desfeita.</p>` : `<p>${player ? player.name : ""} não possui participações registradas em partidas.</p><p class="dialog-info">A exclusão é definitiva: os dados do jogador serão removidos e não poderão ser recuperados.</p>`}</div><footer><button class="module-secondary" type="button" data-proto-action="close-remove-player">CANCELAR</button><button class="module-danger" type="button" data-proto-action="remove-player">EXCLUIR JOGADOR</button></footer></form></dialog>`
     });
   }
 
@@ -1010,6 +1042,7 @@
     window.clearTimeout(window.__vodPrep);
     if (!hold) window.__vodPrep = window.setTimeout(() => {
       if (getRoute() !== "preparando") return;
+      if (getHashParams().has("falha")) { prototypeState.sync = syncScenario("falha"); navigate("sincronizacao?cenario=falha"); return; }
       prototypeState.sync = syncScenario("validada");
       navigate("revisao");
     }, 6200);
@@ -1278,10 +1311,10 @@
 
   function traceabilityScreen() {
     const groups = [
-      ["Acesso e gestão", "RF001–RF004", "RN001, RN016–RN018", "Login, gestão administrativa, perfil da equipe e elenco"],
-      ["Partidas e desempenho", "RF005–RF007", "RN002–RN003, RN010–RN014, RN027, RN029, RN033–RN034", "Wizard de partida, scoreboard, exclusão e painéis"],
-      ["POVs e revisão", "RF008–RF012", "RN004–RN009, RN019–RN026, RN028, RN030", "Gravações, sincronização, timeline, anotações e conclusão"],
-      ["Síntese", "RF013", "RN015, RN031–RN032", "Versões preservadas e base da síntese"]
+      ["Acesso e gestão", "RF001–RF004", "RN001, RN010, RN012, RN014–RN016, RN028–RN030, RN032–RN034", "Login, gestão administrativa, equipes, treinadores e elenco"],
+      ["Partidas e desempenho", "RF005–RF007", "RN002–RN003, RN008–RN012, RN015–RN016, RN023, RN025, RN027–RN029, RN031, RN036–RN037", "Cadastro de partida, adversário, scoreboard, exclusão e painéis"],
+      ["POVs e revisão", "RF008–RF012", "RN004–RN012, RN015–RN027, RN031, RN035–RN036", "Gravações, sincronização automática, timeline, anotações e conclusão"],
+      ["Síntese", "RF013", "RN013, RN015–RN016, RN026", "Síntese única e base da síntese"]
     ];
     return moduleShell({ screen: "rastreabilidade", activeNav: "reviews", eyebrow: "DOCUMENTAÇÃO DO PROTÓTIPO", title: "MATRIZ DE RASTREABILIDADE", description: "Mapa visual dos requisitos funcionais e regras de negócio cobertos pelos fluxos de demonstração.", actions: '<button class="module-secondary" type="button" data-route="dashboard">VOLTAR AO PAINEL</button>', content: `<section class="traceability-grid">${groups.map((group, index) => `<article class="traceability-card"><span>0${index + 1}</span><h2>${group[0]}</h2><p><strong>${group[1]}</strong><small>${group[2]}</small></p><em>${group[3]}</em><i>COBERTURA VISUAL</i></article>`).join("")}</section><p class="module-notice"><strong>Escopo:</strong> cada item é representado por estado, aviso, checklist ou bloqueio visual. Não há validação sistêmica, persistência ou processamento real.</p>` });
   }
@@ -1305,7 +1338,7 @@
     return `<div class="recordings-panel"><div class="recordings-panel__head"><div><span class="module-label">GRAVAÇÕES DOS PARTICIPANTES</span><strong>${sent} de ${players.length} enviadas</strong></div>${locked ? "" : `<button class="module-primary" type="button" data-route="${next}" ${sent ? "" : "disabled"}>INICIAR REVISÃO</button>`}</div>
         <div class="recordings-panel__bar" aria-hidden="true"><i style="width:${players.length ? sent / players.length * 100 : 0}%"></i></div>
         <section class="recording-grid" aria-label="Gravações dos participantes">${players.map(card).join("")}</section>
-        ${finalized ? '<p class="dialog-info">A sessão de revisão desta partida está finalizada: as gravações estão disponíveis somente para consulta.</p>' : locked ? '<p class="dialog-info">A sessão de revisão desta partida já foi criada: os participantes e as gravações não podem mais ser alterados. As gravações ficam disponíveis para a sincronização e a revisão.</p>' : '<p class="dialog-info">Envie uma gravação principal por participante, em MP4 (H.264) de até 2 GB. Para trocar um arquivo, remova a gravação e envie outra. Ao iniciar a revisão, a plataforma sincroniza os POVs automaticamente, cria a sessão e bloqueia os participantes e as gravações.</p>'}
+        ${finalized ? '<p class="dialog-info">A sessão de revisão desta partida está finalizada: as gravações estão disponíveis somente para consulta.</p>' : locked ? '<p class="dialog-info">A sessão de revisão desta partida já foi criada: os participantes e as gravações não podem mais ser alterados. As gravações ficam disponíveis para a sincronização e a revisão.</p>' : '<p class="dialog-info">Envie uma gravação principal por participante, em MP4 (H.264) de até 2 GB. As gravações devem corresponder à mesma partida, sob responsabilidade do treinador. Para trocar um arquivo, remova a gravação e envie outra. Ao iniciar a revisão, a plataforma sincroniza os POVs automaticamente, cria a sessão e bloqueia os participantes e as gravações.</p>'}
         <dialog class="module-dialog confirm-dialog" data-recording-dialog><form method="dialog"><header><div><span class="module-label" data-recording-dialog-label></span><h2 data-recording-dialog-title></h2></div><button type="button" data-proto-action="close-recording-dialog" aria-label="Fechar">×</button></header><div class="dialog-fields" data-recording-dialog-body></div><footer><button class="module-secondary" type="button" data-proto-action="close-recording-dialog">CANCELAR</button><button class="module-danger" type="button" data-proto-action="confirm-recording-dialog" data-recording-dialog-ok></button></footer></form></dialog></div>`;
   }
 
@@ -1462,13 +1495,13 @@
     const finalized = getHashParams().has("finalizada") || prototypeState.reviewReady;
     const sync = prototypeState.sync;
     const single = getHashParams().has("unico");
-    const locked = false;
+    const locked = !single && sync.status !== "validated";
     const audioName = "ANDRÉ";
     return focusShell({
       screen: "revisao",
       activeNav: "reviews",
-      content: `<header class="review-topbar"><button class="review-topbar__back" type="button" data-proto-action="select-match" data-match="m2" data-goto="partidas" aria-label="Voltar à partida">←</button><div class="review-topbar__match"><img src="${assets.azure}" alt=""><div><span class="module-label">${finalized ? "REVISÃO FINALIZADA" : "REVISÃO EM ANDAMENTO"}</span><strong>AZURE BEARS <em>×</em> WOLF GAMING</strong><small>ASCENT · 21 MAR 2026 · ${single ? "1 POV" : "4 POVs SINCRONIZADOS"}</small></div><img src="${assets.wolf}" alt=""></div><div class="review-topbar__actions">${finalized ? '<button class="module-primary" type="button" data-open-synthesis data-route="sintese">GERAR SÍNTESE</button>' : '<button class="module-primary" type="button" data-finalize-review>FINALIZAR REVISÃO</button><button class="module-primary is-hidden" type="button" data-open-synthesis data-route="sintese">GERAR SÍNTESE</button>'}</div></header>
-      <div class="review-workspace"><section class="pov-stage${locked ? " is-locked" : ""}"><div class="pov-viewer" data-pov-viewer aria-label="Visualizador de cinco posições Multi-POV">${locked ? `<div class="pov-locked"><span class="status-badge status-badge--pending">SINCRONIZAÇÃO ${sync.status === "proposed" ? "NÃO VALIDADA" : "PENDENTE"}</span><h2>Reprodução sincronizada indisponível</h2><p>Com duas ou mais gravações, a correspondência temporal precisa ser conferida e validada antes da reprodução e do registro de anotações.</p><button class="module-primary" type="button" data-route="sincronizacao">SINCRONIZAR POVs</button></div>` : reviewPovViewer()}</div>
+      content: `<header class="review-topbar"><button class="review-topbar__back" type="button" data-proto-action="select-match" data-match="m2" data-goto="partidas" aria-label="Voltar à partida">←</button><div class="review-topbar__match"><img src="${assets.azure}" alt=""><div><span class="module-label">${finalized ? "REVISÃO FINALIZADA" : "REVISÃO EM ANDAMENTO"}</span><strong>AZURE BEARS <em>×</em> WOLF GAMING</strong><small>ASCENT · 21 MAR 2026 · ${single ? "1 POV" : "4 POVs SINCRONIZADOS"}</small></div><img src="${assets.wolf}" alt=""></div><div class="review-topbar__actions">${finalized ? '<button class="module-primary" type="button" data-open-synthesis data-route="sintese">GERAR SÍNTESE</button>' : '<button class="module-secondary" type="button" data-route="sincronizacao">AJUSTAR SINCRONIA</button><button class="module-primary" type="button" data-finalize-review>FINALIZAR REVISÃO</button><button class="module-primary is-hidden" type="button" data-open-synthesis data-route="sintese">GERAR SÍNTESE</button>'}</div></header>
+      <div class="review-workspace"><section class="pov-stage${locked ? " is-locked" : ""}"><div class="pov-viewer" data-pov-viewer aria-label="Visualizador de cinco posições Multi-POV">${locked ? `<div class="pov-locked"><span class="status-badge status-badge--pending">${sync.status === "failed" ? "FALHA NA DETECÇÃO" : sync.status === "proposed" ? "SINCRONIZAÇÃO NÃO VALIDADA" : "SINCRONIZAÇÃO PENDENTE"}</span><h2>Reprodução sincronizada indisponível</h2><p>${sync.status === "failed" ? "A detecção automática não identificou o início da primeira rodada em todas as gravações. Ajuste e valide a sincronização para liberar a reprodução e o registro de anotações." : "A sincronização foi ajustada e precisa ser validada antes da reprodução e do registro de anotações."}</p><button class="module-primary" type="button" data-route="sincronizacao">AJUSTAR SINCRONIA</button></div>` : reviewPovViewer()}</div>
         <div class="review-player" data-review-player style="--timeline-progress:30.02%">
           <div class="review-timeline">
             <div class="review-timeline__track">
@@ -1506,6 +1539,16 @@
          points: ["Definir gatilho de rotação após o primeiro contato no A.", "Padronizar as compras em rounds de economia.", "Manter a Viper Pit para o segundo contato no pós-plant."],
          next: "Revisar rotações a partir do round 7 e treinar retakes 3v3 com utilitários combinados." }
   };
+  const MATCH_SYNTH = {
+    m1: SYNTH_TEXT[2],
+    m4: { overview: "A vitória por 13 a 6 no Split veio do controle do meio no primeiro half e de rotações rápidas a partir das informações do Sova.",
+          points: ["Manter a pressão no Mid Vents nos rounds de ataque.", "Usar o recon do Sova como gatilho das rotações.", "Preservar a economia após rounds vencidos com vantagem."],
+          next: "Treinar execuções a partir do meio e a comunicação das rotações." },
+    m5: { overview: "A vitória por 13 a 10 no Bind foi construída na defesa do B, apesar das perdas em sequência nos rounds de economia.",
+          points: ["Revisar o padrão de compra forçada nos rounds de eco.", "Antecipar as smokes da Viper no retake do A.", "Evitar duelos abertos sem possibilidade de troca."],
+          next: "Treinar retakes do A com a linha da Viper e cenários de economia." }
+  };
+
   function synthesisScreen() {
     const params = getHashParams();
     const notFinalized = params.has("andamento");
@@ -1518,7 +1561,7 @@
     const body = notFinalized
       ? `<div class="synthesis-placeholder"><span>Σ</span><strong>SÍNTESE INDISPONÍVEL</strong><p>A síntese pode ser gerada somente após a finalização da sessão de revisão.</p></div>`
       : generating ? `<div class="synthesis-placeholder is-loading"><span>Σ</span><strong>GERANDO SÍNTESE…</strong><p>Anotações e scoreboard enviados ao modelo de linguagem com os nomes dos jogadores substituídos por pseudônimos.</p><i class="recording-progress"><b style="width:60%"></b></i></div>`
-      : failed ? `<div class="synthesis-placeholder is-error"><span>!</span><strong>NÃO FOI POSSÍVEL GERAR A SÍNTESE</strong><p>O serviço do modelo de linguagem não respondeu. A síntese atual, se houver, foi mantida; tente novamente.</p></div>`
+      : failed ? `<div class="synthesis-placeholder is-error"><span>!</span><strong>NÃO FOI POSSÍVEL GERAR A SÍNTESE</strong><p>O serviço do modelo de linguagem não respondeu. Nenhuma síntese foi registrada; tente novamente.</p></div>`
       : !viewing ? `<div class="synthesis-placeholder"><span>Σ</span><strong>NENHUMA SÍNTESE GERADA</strong><p>A síntese é gerada a partir das anotações e do scoreboard. Os nomes dos jogadores são enviados ao modelo de linguagem como pseudônimos.</p></div>`
       : `<div class="synthesis-copy"><p class="synthesis-basis">Gerada em ${viewing.at} · ${viewing.notes} anotações · placar ${viewing.score}</p><h3>VISÃO GERAL</h3><p>${text.overview}</p><h3>PONTOS DE ATENÇÃO</h3><ul>${text.points.map((x) => `<li>${x}</li>`).join("")}</ul><h3>PRÓXIMA SESSÃO</h3><p>${text.next}</p></div>`;
     const status = notFinalized ? ["muted", "INDISPONÍVEL"] : generating ? ["progress", "GERANDO"] : failed ? ["pending", "FALHA"] : viewing ? ["success", "GERADA"] : ["muted", "NÃO GERADA"];
@@ -1528,9 +1571,9 @@
       eyebrow: notFinalized ? "SESSÃO EM ANDAMENTO · AZURE BEARS VS WOLF GAMING" : "REVISÃO FINALIZADA · AZURE BEARS VS GREEN OWLS",
       title: "SÍNTESE DA REVISÃO",
       description: "",
-      actions: `<button class="module-secondary" type="button" data-route="revisao${notFinalized ? "" : "?finalizada=1"}">VOLTAR À REVISÃO</button><button class="module-primary" type="button" data-proto-action="generate-synthesis" ${notFinalized || generating ? "disabled" : ""}>${versions.length ? "GERAR NOVAMENTE" : "GERAR SÍNTESE"}</button>`,
+      actions: `<button class="module-secondary" type="button" data-route="revisao${notFinalized ? "" : "?finalizada=1"}">VOLTAR À REVISÃO</button><button class="module-primary" type="button" data-proto-action="generate-synthesis" ${notFinalized || generating ? "disabled" : ""}>GERAR SÍNTESE</button>`.replace(/<button class="module-primary"[^]*$/, (m) => versions.length ? "" : m),
       content: `<section class="synthesis-summary"><article><span>PARTIDA</span><strong>${notFinalized ? "AZURE BEARS × WOLF GAMING" : `AZURE BEARS ${prototypeState.scoreboardState === "corrected" ? "13 — 9" : "13 — 8"} GREEN OWLS`}</strong><small>${notFinalized ? "ASCENT · 21 MAR 2026" : "HAVEN · 28 MAR 2026"}</small></article><article><span>BASE DA SÍNTESE</span><strong>3 ANOTAÇÕES</strong><small>e scoreboard de 5 participantes</small></article><article><span>SESSÃO</span><strong>${notFinalized ? "EM ANDAMENTO" : "FINALIZADA"}</strong><small>${notFinalized ? "Scoreboard pendente" : "Scoreboard completo"}</small></article></section>
-        <div class="synthesis-layout"><section class="module-card synthesis-result"><header><div><span class="module-label">SÍNTESE DA SESSÃO</span><h2>SÍNTESE TÁTICA</h2></div><span class="status-badge status-badge--${status[0]}">${status[1]}</span></header>${body}</section><aside class="module-card synthesis-history"><header><span class="module-label">SOBRE A SÍNTESE</span><small>Uma síntese por sessão</small></header><ul class="synthesis-rules"><li>Gerada a partir das anotações e do scoreboard da sessão finalizada.</li><li>Os nomes dos jogadores são enviados ao modelo de linguagem como pseudônimos.</li><li>O texto gerado não é editável.</li><li>Gerar novamente substitui a síntese atual.</li></ul></aside></div>`
+        <div class="synthesis-layout"><section class="module-card synthesis-result"><header><div><span class="module-label">SÍNTESE DA SESSÃO</span><h2>SÍNTESE TÁTICA</h2></div><span class="status-badge status-badge--${status[0]}">${status[1]}</span></header>${body}</section><aside class="module-card synthesis-history"><header><span class="module-label">SOBRE A SÍNTESE</span><small>Uma síntese por sessão</small></header><ul class="synthesis-rules"><li>Gerada a partir das anotações e do scoreboard da sessão finalizada.</li><li>Os nomes dos jogadores são enviados ao modelo de linguagem como pseudônimos.</li><li>O texto gerado não é editável.</li><li>A síntese é gerada uma única vez e preservada como registro da sessão.</li></ul></aside></div>`
     });
   }
 
@@ -2525,7 +2568,7 @@
         prototypeState.matchSynthesis[id] = {
           status: "ready",
           at: "28/03/2026 18:05",
-          notes: prototypeState.notes.length,
+          notes: target ? (matchNotes(target) || []).length : 0,
           score: target ? `${target.ours} — ${target.theirs}` : "—"
         };
         render();
@@ -2574,6 +2617,10 @@
       }
       const correction = control.dataset.mode === "correction";
       prototypeState.scoreboardState = correction ? "corrected" : "complete";
+      if (correction) {
+        const ms = (prototypeState.matchSynthesis || {})[prototypeState.selectedMatch || "m1"];
+        if (ms && ms.status === "ready") ms.corrected = true;
+      }
       if (correction) { render(); prototypeToast("Scoreboard corrigido com sucesso."); }
       else { prototypeState.keepToast = "Scoreboard registrado com sucesso."; navigate("revisao"); }
     }
