@@ -566,7 +566,7 @@
     }
 
     const text = MATCH_SYNTH[match.id] || SYNTH_TEXT[2];
-    return frame(`${entry.corrected ? '<p class="dialog-info synthesis-corrected">O scoreboard foi corrigido após a geração desta síntese. A síntese representa o placar considerado na geração.</p>' : ""}<p class="synthesis-basis"><i data-lucide="sparkles" aria-hidden="true"></i>Gerada em ${entry.at} · ${entry.notes} ${entry.notes === 1 ? "anotação" : "anotações"} · placar ${entry.score}</p>
+    return frame(`<p class="synthesis-basis"><i data-lucide="sparkles" aria-hidden="true"></i>Gerada em ${entry.at} · ${entry.notes} ${entry.notes === 1 ? "anotação" : "anotações"} · placar ${entry.score}</p>
         <div class="synthesis-copy">
           <section><h3><i data-lucide="eye" aria-hidden="true"></i>VISÃO GERAL</h3><p>${text.overview}</p></section>
           <section><h3><i data-lucide="target" aria-hidden="true"></i>PONTOS DE ATENÇÃO</h3><ul class="synthesis-points">${text.points.map((x) => `<li>${x}</li>`).join("")}</ul></section>
@@ -599,7 +599,7 @@
             </header>
             <nav class="match-detail__tabs" role="tablist" aria-label="Detalhes da partida"><button class="${tab === "main" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "main"}" data-proto-action="match-tab" data-tab="main"><i data-lucide="${finalized ? "chart-no-axes-combined" : "users-round"}" aria-hidden="true"></i>${finalized ? "SCOREBOARD" : "PARTICIPANTES"}</button><button class="${tab === "recordings" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "recordings"}" data-proto-action="match-tab" data-tab="recordings"><i data-lucide="video" aria-hidden="true"></i>GRAVAÇÕES <span>${sent}</span></button><button class="${tab === "notes" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "notes"}" data-proto-action="match-tab" data-tab="notes"><i data-lucide="notebook-pen" aria-hidden="true"></i>ANOTAÇÕES <span>${(matchNotes(match) || []).length}</span></button><button class="${tab === "synthesis" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "synthesis"}" data-proto-action="match-tab" data-tab="synthesis"><i data-lucide="sparkles" aria-hidden="true"></i>SÍNTESE${finalized && prototypeState.matchSynthesis && prototypeState.matchSynthesis[match.id] && prototypeState.matchSynthesis[match.id].status === "ready" ? '<b class="tab-dot" aria-label="Síntese gerada"></b>' : ""}</button><button type="button" data-route="${match.status === "waiting" ? (sent >= 2 ? "preparando" : "revisao") : "revisao"}"${match.status === "waiting" && !sent ? " disabled" : ""}><i data-lucide="play" aria-hidden="true"></i>SESSÃO <span>${match.status === "waiting" ? 0 : 1}</span></button></nav>
             ${tab === "recordings" ? recordingsPanel(match) : tab === "notes" ? matchNotesPanel(match) : tab === "synthesis" ? matchSynthesisPanel(match) : body}
-            <footer class="match-detail__actions"><button class="module-secondary" type="button" data-route="nova-partida?editar=1">EDITAR PARTIDA</button>${finalized ? '<button class="module-secondary" type="button" data-route="scoreboard?correcao=1">CORRIGIR SCOREBOARD</button>' : ""}<button class="module-danger" type="button" data-proto-action="open-delete-match">EXCLUIR PARTIDA</button></footer>
+            <footer class="match-detail__actions"><button class="module-secondary" type="button" data-route="nova-partida?editar=1">EDITAR PARTIDA</button><button class="module-danger" type="button" data-proto-action="open-delete-match">EXCLUIR PARTIDA</button></footer>
           </article>`;
   }
 
@@ -1107,7 +1107,7 @@
       <td><span class="user-team"><strong>${user.team || "SEM EQUIPE"}</strong><small>${user.team ? "TREINADOR RESPONSÁVEL" : "ATRIBUIÇÃO EM EQUIPES"}</small></span></td>
       <td><span class="status-badge status-badge--${user.status === "ATIVO" ? "success" : "muted"}" data-user-status>${user.status}</span></td>
       <td>${user.access}</td>
-      <td class="module-table__actions"><button type="button" data-edit-user="${index}" aria-label="Editar treinador" title="Editar treinador"></button><button type="button" data-toggle-user aria-label="${user.status === "ATIVO" ? "Desativar" : "Ativar"} treinador" title="${user.status === "ATIVO" ? "Desativar" : "Ativar"} treinador"></button></td>
+      <td class="module-table__actions"><button type="button" data-edit-user="${index}" aria-label="Editar treinador" title="Editar treinador"></button><button type="button" data-toggle-user aria-label="${user.status === "ATIVO" ? "Desativar" : "Ativar"} treinador" title="${user.status === "ATIVO" ? "Desativar" : "Ativar"} treinador"></button>${user.team ? "" : `<button type="button" data-delete-user aria-label="Excluir treinador" title="Excluir treinador"></button>`}</td>
     </tr>`;
   }
 
@@ -1290,10 +1290,8 @@
   }
 
   function scoreboardScreen() {
-    const correction = getHashParams().has("correcao");
-    const match = findMatch(correction ? "m1" : "m2");
-    const complete = correction || prototypeState.scoreboardState !== "incomplete";
-    const corrected = prototypeState.scoreboardState === "corrected";
+    const match = findMatch("m2");
+    const complete = prototypeState.scoreboardState !== "incomplete";
     const agents = ["Jett", "Omen", "Killjoy", "Sova", "Viper"];
     const invalid = prototypeState.scoreboardInvalid || [];
     const rows = homeScoreboard.slice(0, 5).map((player, index) => {
@@ -1301,12 +1299,11 @@
       const bad = invalid.includes(player.player);
       return `<div class="score-entry__row ${missing || bad ? "is-missing" : ""}" data-score-row="${player.player}"><span><img src="${player.icon}" alt="">${player.player}<select aria-label="Agente de ${player.player}" data-score-agent>${missing ? '<option selected>Selecione</option>' : ""}${agents.map((agent) => `<option${!missing && agent === player.agent ? " selected" : ""}>${agent}</option>`).join("")}</select></span><input value="${missing ? "" : player.k}" placeholder="—" inputmode="numeric" aria-label="Abates de ${player.player}" data-score-stat><input value="${missing ? "" : player.d}" placeholder="—" inputmode="numeric" aria-label="Mortes de ${player.player}" data-score-stat><input value="${missing ? "" : player.a}" placeholder="—" inputmode="numeric" aria-label="Assistências de ${player.player}" data-score-stat><input value="${missing ? "" : player.fk}" placeholder="—" inputmode="numeric" aria-label="Primeiros abates de ${player.player}" data-score-stat><b>${missing ? "—" : player.diff}</b><span class="status-badge status-badge--${missing || bad ? "pending" : "success"}">${bad ? "INVÁLIDO" : missing ? "PENDENTE" : "COMPLETO"}</span></div>`;
     }).join("");
-    const ours = correction ? match.ours : 9;
-    const theirs = correction ? match.theirs : 13;
-    return moduleShell({ screen: "scoreboard", activeNav: correction ? "matches" : "reviews", eyebrow: `PARTIDA · AZURE BEARS VS ${match.opponent}`, title: correction ? "CORRIGIR SCOREBOARD" : "REGISTRAR SCOREBOARD", description: "", actions: correction ? '<button class="module-secondary" type="button" data-route="partidas">VOLTAR À PARTIDA</button>' : '<button class="module-secondary" type="button" data-route="revisao">VOLTAR À REVISÃO</button>', content: `
-      ${correction ? "" : `<section class="state-switcher" aria-label="Cenários de demonstração"><span>CENÁRIO VISUAL</span><button data-proto-action="score-state" data-state="incomplete" class="${!complete ? "is-active" : ""}">INCOMPLETO</button><button data-proto-action="score-state" data-state="complete" class="${complete && !corrected ? "is-active" : ""}">COMPLETO</button></section>`}
-      <section class="score-entry module-card"><header><div><span class="module-label">PLACAR FINAL · RODADAS · ${match.map.toLocaleUpperCase("pt-BR")}</span><strong class="score-entry__final">AZURE BEARS <input value="${ours}" inputmode="numeric" aria-label="Rodadas vencidas pela AZURE BEARS" data-score-final> — <input value="${theirs}" inputmode="numeric" aria-label="Rodadas vencidas pelo adversário" data-score-final> ${match.opponent}</strong></div><span class="status-badge status-badge--${complete && !invalid.length ? "success" : "pending"}">${correction ? "SESSÃO FINALIZADA" : complete && !invalid.length ? "COMPLETO" : "INCOMPLETO"}</span></header><div class="score-entry__table"><div class="score-entry__head"><span>PARTICIPANTE / AGENTE</span><span>K</span><span>D</span><span>A</span><span>FK</span><span>SALDO</span><span>SITUAÇÃO</span></div>${rows}</div><footer><p class="dialog-info">Para cada participante, informe o agente e as quantidades de abates (K), mortes (D), assistências (A) e primeiros abates (FK), como números inteiros iguais ou maiores que zero. O saldo (K − D) é calculado automaticamente.</p><button class="module-primary" type="button" data-proto-action="save-scoreboard" data-mode="${correction ? "correction" : "register"}">${correction ? "SALVAR CORREÇÃO" : "SALVAR SCOREBOARD"}</button></footer></section>
-      ${corrected && correction ? '<section class="recalculation-banner"><strong>SCOREBOARD CORRIGIDO</strong><span>Os indicadores da equipe e dos jogadores passam a considerar os valores corrigidos. As sínteses já geradas são preservadas.</span></section>' : ""}` });
+    const ours = 9;
+    const theirs = 13;
+    return moduleShell({ screen: "scoreboard", activeNav: "reviews", eyebrow: `PARTIDA · AZURE BEARS VS ${match.opponent}`, title: "REGISTRAR SCOREBOARD", description: "", actions: '<button class="module-secondary" type="button" data-route="revisao">VOLTAR À REVISÃO</button>', content: `
+      <section class="state-switcher" aria-label="Cenários de demonstração"><span>CENÁRIO VISUAL</span><button data-proto-action="score-state" data-state="incomplete" class="${!complete ? "is-active" : ""}">INCOMPLETO</button><button data-proto-action="score-state" data-state="complete" class="${complete ? "is-active" : ""}">COMPLETO</button></section>
+      <section class="score-entry module-card"><header><div><span class="module-label">PLACAR FINAL · RODADAS · ${match.map.toLocaleUpperCase("pt-BR")}</span><strong class="score-entry__final">AZURE BEARS <input value="${ours}" inputmode="numeric" aria-label="Rodadas vencidas pela AZURE BEARS" data-score-final> — <input value="${theirs}" inputmode="numeric" aria-label="Rodadas vencidas pelo adversário" data-score-final> ${match.opponent}</strong></div><span class="status-badge status-badge--${complete && !invalid.length ? "success" : "pending"}">${complete && !invalid.length ? "COMPLETO" : "INCOMPLETO"}</span></header><div class="score-entry__table"><div class="score-entry__head"><span>PARTICIPANTE / AGENTE</span><span>K</span><span>D</span><span>A</span><span>FK</span><span>SALDO</span><span>SITUAÇÃO</span></div>${rows}</div><footer><p class="dialog-info">Para cada participante, informe o agente e as quantidades de abates (K), mortes (D), assistências (A) e primeiros abates (FK), como números inteiros iguais ou maiores que zero. O saldo (K − D) é calculado automaticamente. Ao salvar, a revisão é finalizada e o scoreboard não poderá mais ser alterado.</p><button class="module-primary" type="button" data-proto-action="save-scoreboard" data-mode="register">SALVAR SCOREBOARD</button></footer></section>` });
   }
 
   function traceabilityScreen() {
@@ -1563,7 +1560,7 @@
       : generating ? `<div class="synthesis-placeholder is-loading"><span>Σ</span><strong>GERANDO SÍNTESE…</strong><p>Anotações e scoreboard enviados ao modelo de linguagem com os nomes dos jogadores substituídos por pseudônimos.</p><i class="recording-progress"><b style="width:60%"></b></i></div>`
       : failed ? `<div class="synthesis-placeholder is-error"><span>!</span><strong>NÃO FOI POSSÍVEL GERAR A SÍNTESE</strong><p>O serviço do modelo de linguagem não respondeu. Nenhuma síntese foi registrada; tente novamente.</p></div>`
       : !viewing ? `<div class="synthesis-placeholder"><span>Σ</span><strong>NENHUMA SÍNTESE GERADA</strong><p>A síntese é gerada a partir das anotações e do scoreboard. Os nomes dos jogadores são enviados ao modelo de linguagem como pseudônimos.</p></div>`
-      : `<div class="synthesis-copy">${params.has("corrigido") || prototypeState.synthesisCorrected ? '<p class="dialog-info synthesis-corrected">O scoreboard foi corrigido após a geração desta síntese. A síntese representa o placar considerado na geração.</p>' : ""}<p class="synthesis-basis">Gerada em ${viewing.at} · ${viewing.notes} anotações · placar ${viewing.score}</p><h3>VISÃO GERAL</h3><p>${text.overview}</p><h3>PONTOS DE ATENÇÃO</h3><ul>${text.points.map((x) => `<li>${x}</li>`).join("")}</ul><h3>PRÓXIMA SESSÃO</h3><p>${text.next}</p></div>`;
+      : `<div class="synthesis-copy"><p class="synthesis-basis">Gerada em ${viewing.at} · ${viewing.notes} anotações · placar ${viewing.score}</p><h3>VISÃO GERAL</h3><p>${text.overview}</p><h3>PONTOS DE ATENÇÃO</h3><ul>${text.points.map((x) => `<li>${x}</li>`).join("")}</ul><h3>PRÓXIMA SESSÃO</h3><p>${text.next}</p></div>`;
     const status = notFinalized ? ["muted", "INDISPONÍVEL"] : generating ? ["progress", "GERANDO"] : failed ? ["pending", "FALHA"] : viewing ? ["success", "GERADA"] : ["muted", "NÃO GERADA"];
     return moduleShell({
       screen: "sintese",
@@ -1572,7 +1569,7 @@
       title: "SÍNTESE DA REVISÃO",
       description: "",
       actions: `<button class="module-secondary" type="button" data-route="revisao${notFinalized ? "" : "?finalizada=1"}">VOLTAR À REVISÃO</button><button class="module-primary" type="button" data-proto-action="generate-synthesis" ${notFinalized || generating ? "disabled" : ""}>GERAR SÍNTESE</button>`.replace(/<button class="module-primary"[^]*$/, (m) => versions.length ? "" : m),
-      content: `<section class="synthesis-summary"><article><span>PARTIDA</span><strong>${notFinalized ? "AZURE BEARS × WOLF GAMING" : `AZURE BEARS ${prototypeState.scoreboardState === "corrected" ? "13 — 9" : "13 — 8"} GREEN OWLS`}</strong><small>${notFinalized ? "ASCENT · 21 MAR 2026" : "HAVEN · 28 MAR 2026"}</small></article><article><span>BASE DA SÍNTESE</span><strong>3 ANOTAÇÕES</strong><small>e scoreboard de 5 participantes</small></article><article><span>SESSÃO</span><strong>${notFinalized ? "EM ANDAMENTO" : "FINALIZADA"}</strong><small>${notFinalized ? "Scoreboard pendente" : "Scoreboard completo"}</small></article></section>
+      content: `<section class="synthesis-summary"><article><span>PARTIDA</span><strong>${notFinalized ? "AZURE BEARS × WOLF GAMING" : `AZURE BEARS 13 — 8 GREEN OWLS`}</strong><small>${notFinalized ? "ASCENT · 21 MAR 2026" : "HAVEN · 28 MAR 2026"}</small></article><article><span>BASE DA SÍNTESE</span><strong>3 ANOTAÇÕES</strong><small>e scoreboard de 5 participantes</small></article><article><span>SESSÃO</span><strong>${notFinalized ? "EM ANDAMENTO" : "FINALIZADA"}</strong><small>${notFinalized ? "Scoreboard pendente" : "Scoreboard completo"}</small></article></section>
         <div class="synthesis-layout"><section class="module-card synthesis-result"><header><div><span class="module-label">SÍNTESE DA SESSÃO</span><h2>SÍNTESE TÁTICA</h2></div><span class="status-badge status-badge--${status[0]}">${status[1]}</span></header>${body}</section><aside class="module-card synthesis-history"><header><span class="module-label">SOBRE A SÍNTESE</span><small>Uma síntese por sessão</small></header><ul class="synthesis-rules"><li>Gerada a partir das anotações e do scoreboard da sessão finalizada.</li><li>Os nomes dos jogadores são enviados ao modelo de linguagem como pseudônimos.</li><li>O texto gerado não é editável.</li><li>A síntese é gerada uma única vez e preservada como registro da sessão.</li></ul></aside></div>`
     });
   }
@@ -1581,7 +1578,7 @@
     ["[data-route='dashboard']", "house"], ["[data-route='partidas']", "calendar-days"], ["[data-route='jogadores']", "users-round"],
     ["[data-route='revisoes']", "history"], ["[data-route='gravacoes']", "video"], ["[data-route='sincronizacao']", "waypoints"], ["[data-route='preparando']", "play"],
     ["[data-route='revisao']", "play"], ["[data-route='sintese']", "sparkles"], ["[data-route='nova-partida']", "plus"],
-    ["[data-route='scoreboard']", "chart-no-axes-combined"], ["[data-route^='scoreboard?correcao']", "chart-no-axes-combined"], ["[data-route^='nova-partida?editar']", "square-pen"], ["[data-proto-action='open-recordings']", "video"], ["[data-route='rastreabilidade']", "list-checks"], ["[data-route='perfil-equipe']", "settings-2"],
+    ["[data-route='scoreboard']", "chart-no-axes-combined"], ["[data-route^='nova-partida?editar']", "square-pen"], ["[data-proto-action='open-recordings']", "video"], ["[data-route='rastreabilidade']", "list-checks"], ["[data-route='perfil-equipe']", "settings-2"],
     ["[data-open-team-dialog]", "plus"], ["[data-open-user-dialog], [data-proto-action='open-player-dialog']", "user-plus"],
     ["[data-edit-user], [data-edit-team], [data-edit-note], [data-proto-action='team-profile-save']", "square-pen"],
     ["[data-toggle-user]", "power"], ["[data-delete-user]", "trash-2"], ["[data-delete-team]", "trash-2"], ["[data-remove-recording]", "trash-2"],
@@ -2615,15 +2612,8 @@
         prototypeToast("Informe o placar final e as estatísticas válidas de todos os participantes.");
         return;
       }
-      const correction = control.dataset.mode === "correction";
-      if (correction && (prototypeState.synthesisList || []).length) prototypeState.synthesisCorrected = true;
-      prototypeState.scoreboardState = correction ? "corrected" : "complete";
-      if (correction) {
-        const ms = (prototypeState.matchSynthesis || {})[prototypeState.selectedMatch || "m1"];
-        if (ms && ms.status === "ready") ms.corrected = true;
-      }
-      if (correction) { render(); prototypeToast("Scoreboard corrigido com sucesso."); }
-      else { prototypeState.keepToast = "Scoreboard registrado com sucesso."; navigate("revisao"); }
+      prototypeState.scoreboardState = "complete";
+      prototypeState.keepToast = "Scoreboard registrado com sucesso."; navigate("revisao");
     }
     if (action === "recording-mode") { prototypeState.recordingMode = control.dataset.mode; render(); }
     if (action === "sync-state") { prototypeState.syncState = control.dataset.state; render(); }
@@ -2680,7 +2670,7 @@
         if (getHashParams().has("falha")) { prototypeState.synthesisFailed = true; render(); prototypeToast("Não foi possível gerar a síntese."); return; }
         const replaced = Boolean((prototypeState.synthesisList || []).length);
         prototypeState.synthesisGen = (prototypeState.synthesisGen || 0) + 1;
-        prototypeState.synthesisList = [{ n: 1, at: replaced ? "29/03/2026 10:12" : "28/03/2026 18:05", notes: 3, score: prototypeState.scoreboardState === "corrected" ? "13 — 9" : "13 — 8" }];
+        prototypeState.synthesisList = [{ n: 1, at: replaced ? "29/03/2026 10:12" : "28/03/2026 18:05", notes: 3, score: "13 — 8" }];
         render();
         prototypeToast(replaced ? "Síntese gerada novamente: a anterior foi substituída." : "Síntese gerada com sucesso.");
       }, 1400);
